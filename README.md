@@ -65,6 +65,9 @@ For selfie clips where you talk to camera.
 - **Zoom jumps** on every caption change, with a bigger push on emphasis words.
 - **Follow nudges** ("+ Follow @yourhandle") mid-reel and at the end, plus a series label up top.
 
+### Talking head + lyrics
+Your talking-head video with the film look, hook, pictures, punch-ins and follow nudges, but your captions pop into the lyric grid in the lower part of the frame instead of yellow subtitles. Word size and glow come from the Lyric grid card. Auto edit and the timeline work the same way.
+
 ### Lyric grid (text-only and voice-overs)
 For song reels and voice-overs with no talking head.
 
@@ -92,7 +95,7 @@ Set where the video starts and ends, and cut bad takes out of the middle. The re
 
 ## Timeline
 
-A multi-track timeline under the format picker shows everything in your video: **Scenes**, **Pictures**, **Captions**, **Sounds**, **Cuts** and **Music**.
+A multi-track timeline under the format picker shows everything in your video: **Video**, **Text** (hook, series label, follow nudges), **Scenes**, **Pictures**, **Captions** (or **Lyrics**), **Sounds**, **Cuts** and **Music**. Drag the hook's right edge to change how long it stays.
 
 - **Drag** a block to move it, **drag its edges** to make it longer or shorter, **click** it to edit it below the timeline, and **click empty space** to jump the playhead there. Zoom in and out with the slider. **Delete** removes the selected block.
 - **Scenes** let you mix styles in one video: drop a **lyric grid section** (with its own lyrics) or any animation (**graph, steps, map route, breakdown, stick figure, what if**) between talking-head parts. The video keeps playing underneath and the audio carries on.

@@ -684,7 +684,7 @@ function sfxChoices(){ const o=[["none","No sound"]]; for (const [k,[n]] of Obje
 const FORMATS = {reel:["Reel / Short","9:16 vertical"], yt:["YouTube","16:9 landscape"], carousel:["Carousel","slides for IG & LinkedIn"], anim:["Animation","graph, steps, map route"]};
 const CAR_LAYOUTS = {cover:"Cover", text:"Text", list:"List", quote:"Quote", image:"Photo + text", cta:"Follow / save"};
 const isCar=()=>S.fmt==="carousel";
-const MODES = {talk:["Talking head","house style: film look, hook, yellow subtitles"], lyric:["Lyric grid","text-only songs and voice-overs"]};
+const MODES = {talk:["Talking head","house style: film look, hook, yellow subtitles"], mix:["Talking head + lyrics","your video, words pop into the grid"], lyric:["Lyric grid","text-only songs and voice-overs"]};
 const LY_BG = {band:["Film band","16:9 band on black, teal film"], full:["Full pictures","pictures fill the frame"], black:["Black","plain"], white:["White","black words, no glow"]};
 const DEFAULTS = {
   fmt:"reel",
@@ -1123,13 +1123,13 @@ function layoutPhrase(ph,size){
   const rows=(cells.length?cells[cells.length-1].row:0)+1;
   return {cells,rows};
 }
-function drawLyrics(t,list=phrases,endAt=null){
+function drawLyrics(t,list=phrases,endAt=null,o={}){
   const ph=list.find(p=>t>=p.t0 && t<p.t1); if (!ph) return;
   const size=S.ly.size*K(); const L=layoutPhrase(ph,size);
   const rowH = L.rows>=4 ? size*1.22 : size*1.39;
-  const cy = (S.ly.bg==="band" && !yt()) ? BAND.y+BAND.h/2 : H/2;
+  const cy = o.cy ?? ((S.ly.bg==="band" && !yt()) ? BAND.y+BAND.h/2 : H/2);
   const top = cy-(L.rows-1)*rowH/2 + size*.34;
-  const white=S.ly.bg==="white"; const isLast=ph===list[list.length-1];
+  const white=!o.mix && S.ly.bg==="white"; const isLast=ph===list[list.length-1];
   let fadeOut=1; if (isLast){ const end=Math.min(ph.t1,endAt??dur()); if (isFinite(end)) fadeOut=clamp((end-t)/0.6,0,1); }
   const f=HOOK_FONTS.helv;
   for (const c of L.cells){
@@ -1171,7 +1171,7 @@ function render(){
   drawLook(t);
   if (S.topFade){ const g=ctx.createLinearGradient(0,0,0,740); g.addColorStop(0,"#000"); g.addColorStop(320/740,"#000"); g.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=g; ctx.fillRect(0,0,W,740); }
   if (S.t.glow){ ctx.save(); ctx.globalCompositeOperation="screen"; const g=ctx.createRadialGradient(CX(),Y(520),20,CX(),Y(520),460*K()); const a=.32+.05*Math.sin(t*2); g.addColorStop(0,`rgba(255,240,205,${a})`); g.addColorStop(1,"rgba(255,240,205,0)"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.restore(); }
-  drawHook(t); drawPops(t); drawSubtitle(t);
+  drawHook(t); drawPops(t); if (S.mode==="mix") drawLyrics(t,mixPhrases(),null,{cy:Y(yt()?1500:1240),mix:true}); else drawSubtitle(t);
   drawGrain(t);
   drawExtras(t);
   if (S.t.safe && !exporting) drawSafe();
@@ -1296,7 +1296,7 @@ function updateCards(){
   VIDEO_ONLY.forEach(id=>$(id).hidden=car);
   if (an){ ["styleRow","trimCard","textCard","sfxCard","evCard","picsCard","clipVideo"].forEach(id=>$(id).hidden=true); }
   $("autoCard").hidden=car||an; $("tlCard").hidden=car||an;
-  ["hookCard","subCard","extrasCard"].forEach(id=>$(id).hidden=car||an||ly); $("lyricCard").hidden=car||an||!ly;
+  ["hookCard","subCard","extrasCard"].forEach(id=>$(id).hidden=car||an||ly); if (S.mode==="mix") $("subCard").hidden=true; $("lyricCard").hidden=car||an||!(ly||S.mode==="mix");
   $("animCard").hidden=!an; $("pinCard").hidden=an; $("tlMini").hidden=car||an;
   $("carCard").hidden=!car; $("slideNav").hidden=!car; $("slStrip").hidden=!car;
   $("clipTitle").textContent = (car||an) ? "look" : "your clip";
@@ -1305,10 +1305,11 @@ function updateCards(){
   if (car) renderCarUI();
 }
 function applyMode(){
-  const ly=S.mode==="lyric";
-  updateCards();
+  const ly=S.mode==="lyric", mixm=S.mode==="mix";
+  updateCards(); renderTLLabels();
   $("modeNote").textContent= ly
     ? "Words pop into a loose grid on their beat and stay until the screen clears. No hook, subtitles, handle or follow nudge. Use it for text-only song reels and voice-overs; talking-head reels stay in the house style."
+    : mixm ? "Your talking-head video with the film look, hook, pictures, punch-ins and follow nudges, but your captions pop into the lyric grid in the lower part of the frame instead of subtitles. Word size and glow are in the Lyric grid card."
     : "Your normal edit: film look, Helvetica hook, yellow subtitles, picture cards, punch-ins and follow nudges.";
   $("textTitle").textContent= ly ? "Lyrics" : "What you say";
   $("textNote").textContent= ly
@@ -1682,14 +1683,21 @@ function enforceEdit(){
 }
 
 /* ---------- multi-track timeline ---------- */
-const TRACKS=[["scene","Scenes"],["pic","Pictures"],["cap","Captions"],["sfx","Sounds"],["cut","Cuts"],["music","Music"]];
-const TL_COL={scene:"#F4F83A",pic:"#6E98F5",cap:"#8f877b",sfx:"#F2B8C6",cut:"#E3262E",music:"#18A957"};
+const TRACKS=[["video","Video"],["text","Text"],["scene","Scenes"],["pic","Pictures"],["cap","Captions"],["sfx","Sounds"],["cut","Cuts"],["music","Music"]];
+const TL_COL={video:"#5b6170",text:"#C9A7FF",scene:"#F4F83A",pic:"#6E98F5",cap:"#8f877b",sfx:"#F2B8C6",cut:"#E3262E",music:"#18A957"};
 const TLR=22, TLH=28; let tlSel=null, tlDrag=null, tlPPS=60;
 const tlc=$("tlc"), tctx=tlc.getContext("2d");
 function capLines(){ const out=[]; const re=/^\s*(?:(\d+):)?(\d+(?:\.\d+)?)\s+(.*)$/; S.subText.split("\n").forEach((l,li)=>{ const m=l.match(re); if (m && m[3].trim()!=="-") out.push({li,t:(+(m[1]||0))*60+ +m[2],text:m[3]}); }); return out; }
 function setCapLine(li,t,text){ const lines=S.subText.split("\n"); const m=lines[li].match(/^\s*(?:\d+:)?\d+(?:\.\d+)?\s+(.*)$/); lines[li]=fmt(Math.max(0,t))+" "+(text!=null?text:(m?m[1]:"")); S.subText=lines.join("\n"); if (S.mode!=="lyric") $("subText").value=S.subText; refreshSubs(); }
 function tlItems(){
   const it=[], D=dur();
+  it.push({tr:"video",t0:0,t1:D,label:HV()&&vidFile?vidFile.name:(vidLoaded?"your clip":"sample clip"),ref:"video",fixed:true});
+  if (S.mode!=="lyric"){
+    if (S.hook.text.trim()) it.push({tr:"text",t0:0,t1:Math.min(S.hook.dur,D),label:"Hook: "+S.hook.text.split("\n")[0],ref:"hook"});
+    if (S.x.series && S.x.seriesText) it.push({tr:"text",t0:0,t1:Math.min(4,D),label:S.x.seriesText,ref:"series",fixed:true,sub:true});
+    if (S.x.follow && D>6){ it.push({tr:"text",t0:D*0.45,t1:D*0.45+2,label:S.x.followText,ref:"follow1",fixed:true}); it.push({tr:"text",t0:D-2.6,t1:D,label:S.x.followText,ref:"follow2",fixed:true}); }
+  }
+  if (S.mode==="lyric") phrases.forEach((ph,i)=>it.push({tr:"cap",t0:ph.t0,t1:Math.min(ph.t1,D),label:ph.words.map(w=>w.text).join(" "),ref:ph,fixed:true}));
   cutaways.forEach(c=>it.push({tr:"scene",t0:c.t0,t1:c.t0+c.dur,label:c.type==="lyric"?"Lyrics":(AN_TYPES[c.type]?.[0]||c.type),ref:c}));
   pics.forEach(p=>it.push({tr:"pic",t0:p.t0,t1:p.t0+p.dur,label:p.title||(p.logo?"logo":"picture"),ref:p}));
   const CL=S.mode!=="lyric"?capLines():[]; if (S.mode!=="lyric") subs.forEach((c,i)=>{ const L=CL[i]; if (L) it.push({tr:"cap",t0:c.t0,t1:c.t1,label:c.text.replace(/\*/g,""),ref:L}); });
@@ -1712,7 +1720,7 @@ function drawTL(){
   for (let s2=0;s2<=D+0.001;s2+=step){ const x=s2*tlPPS; g.beginPath(); g.moveTo(x+.5,TLR-6); g.lineTo(x+.5,h); g.stroke(); g.fillText(fmt(s2).replace(/\.0$/,""),x+3,13); }
   TRACKS.forEach((tr,i)=>{ g.fillStyle=i%2?"rgba(255,255,255,.02)":"rgba(0,0,0,.08)"; g.fillRect(0,TLR+i*TLH,w,TLH); });
   for (const it of tlItems()){
-    const row=TRACKS.findIndex(t=>t[0]===it.tr); const y=TLR+row*TLH+4, x=it.t0*tlPPS, ww=Math.max(it.point?8:4,(it.t1-it.t0)*tlPPS);
+    const row=TRACKS.findIndex(t=>t[0]===it.tr); const y=TLR+row*TLH+(it.sub?18:4), x=it.t0*tlPPS, ww=Math.max(it.point?8:4,(it.t1-it.t0)*tlPPS); if (it.sub){ g.fillStyle=TL_COL.text; g.globalAlpha=.6; g.fillRect(x,y,ww,4); g.globalAlpha=1; continue; }
     const sel=tlSel && tlSel.ref===it.ref;
     g.globalAlpha=it.tr==="cut"?0.55:0.9; g.fillStyle=TL_COL[it.tr]; rr(g,x,y,ww,TLH-8,5); g.fill(); g.globalAlpha=1;
     if (sel){ g.strokeStyle="#fff"; g.lineWidth=2; rr(g,x,y,ww,TLH-8,5); g.stroke(); }
@@ -1722,12 +1730,13 @@ function drawTL(){
 }
 function tlHit(x,y){
   const row=Math.floor((y-TLR)/TLH); if (row<0||row>=TRACKS.length) return null; const tr=TRACKS[row][0]; const t=x/tlPPS; const slop=6/tlPPS;
-  const items=tlItems().filter(i=>i.tr===tr).reverse();
+  const items=tlItems().filter(i=>i.tr===tr && !i.sub).reverse();
   for (const it of items){ if (t>=it.t0-slop && t<=it.t1+slop){ let mode="move"; if (!it.point && !it.fixed){ if (Math.abs(t-it.t1)<=slop*1.2) mode="end"; else if (Math.abs(t-it.t0)<=slop*1.2) mode="start"; } return {it,mode,t}; } }
   return null;
 }
 function tlApply(it,mode,dt,orig){
   const r=it.ref, D=dur();
+  if (r==="hook"){ if (mode==="end") S.hook.dur=+Math.max(0.5,orig.t1+dt).toFixed(2); $("hookDur").value=S.hook.dur; return; }
   if (it.tr==="scene"||it.tr==="pic"){ if (mode==="move") r.t0=clamp(orig.t0+dt,0,D-0.1); else if (mode==="end") r.dur=Math.max(0.3,orig.dur+dt); else { const nt=clamp(orig.t0+dt,0,orig.t0+orig.dur-0.3); r.dur=orig.dur-(nt-orig.t0); r.t0=nt; } r.t0=+r.t0.toFixed(2); r.dur=+r.dur.toFixed(2); }
   else if (it.tr==="cap"){ setCapLine(r.li,+(orig.t0+dt).toFixed(2)); }
   else if (it.tr==="sfx"){ r.t=+clamp(orig.t0+dt,0,D).toFixed(2); }
@@ -1739,6 +1748,7 @@ tlc.addEventListener("pointerdown",e=>{
   if (!h){ if (y<TLR || true){ seek(x/tlPPS); } tlSel=null; renderInspector(); return; }
   tlSel=h.it; renderInspector();
   if (h.it.fixed) return;
+  if (h.it.ref==="hook" && h.mode!=="end") return;
   const ref=h.it.ref; tlDrag={it:h.it,mode:h.mode,x0:e.clientX,orig:{t0:h.it.t0,t1:h.it.t1,dur:ref&&ref.dur}}; tlc.setPointerCapture(e.pointerId); e.preventDefault();
 });
 tlc.addEventListener("pointermove",e=>{
@@ -1772,6 +1782,10 @@ function renderInspector(){
   } else if (it.tr==="pic"){ btn("Edit picture",()=>{ selectPic(r); $("picEd").scrollIntoView({behavior:"smooth",block:"center"}); }); }
   else if (it.tr==="cap"){ const inp=document.createElement("input"); inp.type="text"; inp.value=r.text; inp.style.minWidth="240px"; inp.onchange=()=>{ setCapLine(r.li,r.t,inp.value); save(); }; field("Caption (*word* = key word)",inp); }
   else if (it.tr==="sfx"){ const sel=document.createElement("select"); sfxChoices().forEach(([k,n])=>{ const o=document.createElement("option"); o.value=k; o.textContent=n; sel.appendChild(o); }); sel.value=r.kind; sel.onchange=()=>{ r.kind=sel.value; ensureAudio(); playSfx(r.kind); renderEvents(); }; field("Sound",sel); }
+  else if (it.tr==="video"){ const p=document.createElement("p"); p.className="note"; p.textContent="Your clip runs under everything. Trim it or cut parts out on the Cuts track (or in trim & cut)."; box.appendChild(p); btn("Choose video",()=>$("vidIn").click()); return; }
+  else if (r==="hook"){ const ta=document.createElement("textarea"); ta.rows=2; ta.value=S.hook.text; ta.style.minWidth="240px"; ta.oninput=()=>{ S.hook.text=ta.value; $("hookText").value=ta.value; save(); }; field("Hook (drag the block's right edge to change how long it stays)",ta); btn("Go to it",()=>seek(0)); return; }
+  else if (it.tr==="text"){ const p=document.createElement("p"); p.className="note"; p.textContent="Follow nudges and the series label are set in the Extras card."; box.appendChild(p); btn("Go to it",()=>seek(it.t0)); return; }
+  else if (it.tr==="cap" && S.mode==="lyric"){ const p=document.createElement("p"); p.className="note"; p.textContent="This lyric screen comes from the Lyrics card. Edit the times or words there."; box.appendChild(p); btn("Go to it",()=>seek(it.t0)); return; }
   else if (it.tr==="music"){ const p=document.createElement("p"); p.className="note"; p.textContent="Music runs under the whole video. Change it in the Music card."; box.appendChild(p); return; }
   btn("Go to it",()=>seek(it.t0)); btn("Delete",tlDelete,"danger");
 }
@@ -1786,7 +1800,7 @@ $("tlAdd").onclick=()=>{
   save(); renderInspector();
 };
 document.addEventListener("keydown",e=>{ if ((e.key==="Delete"||e.key==="Backspace") && tlSel && !e.target.matches("input,textarea,select")){ e.preventDefault(); tlDelete(); } });
-function renderTLLabels(){ const el=$("tlLabels"); el.innerHTML="<div></div>"+TRACKS.map(t=>`<div>${t[1]}</div>`).join(""); }
+function renderTLLabels(){ const el=$("tlLabels"); el.innerHTML="<div></div>"+TRACKS.map(t=>`<div>${t[0]==="cap"&&S.mode==="lyric"?"Lyrics":t[1]}</div>`).join(""); }
 /* project files: settings, captions, scenes, sounds, cuts and linked pictures (videos and uploads are not stored) */
 $("projSave").onclick=()=>{
   const proj={app:"talkaditalk-reel-studio",v:1,saved:new Date().toISOString(),S,cuts,cutaways,sfxEvents:sfxEvents.filter(e=>!e.kind.startsWith("u:")),pics:pics.filter(p=>p.logo||/^(https?:|\/_blob\/)/.test(p.src)).map(({img,...rest})=>rest)};
@@ -1805,6 +1819,11 @@ $("projIn").onchange=async e=>{
 /* ---------- auto edit: silences, speech timing, captions, key words, pictures, number graphs ---------- */
 const cutawayAt=t=>cutaways.find(c=>t>=c.t0 && t<c.t0+c.dur);
 const lyrCache={};
+let mixKey="", mixList=[];
+function mixPhrases(){ if (mixKey===S.subText) return mixList; mixKey=S.subText;
+  mixList=subs.map(sb=>{ const ws=sb.text.replace(/\*/g,"").split(/\s+/).filter(Boolean); const span=Math.min((sb.t1-sb.t0)*0.6,0.28*ws.length);
+    return {t0:sb.t0,t1:sb.t1,words:ws.map((w,i)=>({t:sb.t0+span*i/Math.max(1,ws.length),text:w.toLowerCase(),split:false}))}; });
+  return mixList; }
 function sceneLyrics(sc){ const key=sc.t0+"|"+(sc.lyrics||""); if (!lyrCache[key]) lyrCache[key]=parseLyrics(sc.lyrics||"").map(p=>({...p,t0:p.t0+sc.t0,t1:Math.min(p.t1+sc.t0,sc.t0+sc.dur),words:p.words.map(w=>({...w,t:w.t+sc.t0}))})); return lyrCache[key]; }
 function drawCutaway(cw,t){
   const keep=S.anim; S.anim={...keep, type:cw.type, dark:true, graph:cw.graph||keep.graph, steps:cw.steps||keep.steps};
