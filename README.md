@@ -26,6 +26,19 @@ It's live at **[tripathiadityap.github.io/claudevideoeditor](https://tripathiadi
 
 Pick the **format** at the top: **Reel / Short** (9:16), **YouTube** (16:9) or **Carousel** (see below). Everything works in both: hooks, subtitles, looks, pictures, sounds, music, the lyric grid and export. YouTube exports at 1280×720, and **Save YouTube thumbnail** saves the current frame as a 1280×720 PNG, the size YouTube asks for. Use your own video file; the editor doesn't download from YouTube links.
 
+## Animations
+
+Pick **Animation** as the format for motion graphics made entirely in the browser, with no footage. Type your own numbers or words, play it, and export it like a reel (add music if you like).
+
+- **Graph:** a line draws itself while one big number counts up and lands. Your real numbers only.
+- **Steps:** minimal line-art steps; a dot hops to the top, an orbit draws around it and the line of text swaps.
+- **Map route:** a little city with parks and a river, the route draws while the camera follows, the pin drops, an ETA card counts down to "Arrived" and a trip card shows minutes and distance.
+- **Breakdown:** a phone comes apart into labelled layers (glass, screen, frame, board, battery, back). Write your own labels.
+- **Stick figure:** a cartoon stick person with expressions, whip transitions and 1 to 2 word captions from your script.
+- **What if:** question, what people think, the twist, examples and the payoff, with bold captions and impact hits.
+
+These are lightweight browser versions inspired by [Artem Novitckii's animation skills](https://github.com/artemnovitckii/claude-animation-skills) (MIT). For the full-quality 3D renders, voiceovers and word-timed captions, install those skills in Claude Code and run `/graph`, `/map-route`, `/breakdown`, `/minimalistic-graphics`, `/stick-figure` or `/zach-d-films`.
+
 ## Carousels
 
 Pick **Carousel** as the format to build slide posts for Instagram (4:5 or 1:1) and LinkedIn.
