@@ -22,9 +22,21 @@ Download this repo and open `index.html` in Chrome, Edge or Safari. That's it.
 
 It's live at **[tripathiadityap.github.io/claudevideoeditor](https://tripathiadityap.github.io/claudevideoeditor/)**. The `Deploy to GitHub Pages` workflow republishes it on every push to `main`. If you fork this, set Settings → Pages → Source to **GitHub Actions** and it deploys the same way.
 
+## Made for recording on your phone
+
+1. Record on your phone.
+2. Open the editor and tap **1 · Choose video**.
+3. Tap **2 · Auto edit**: pauses cut, captions timed to your voice, key words animated, pictures placed.
+4. Tap **3 · Export**.
+
+- **On phones:** the play bar stays pinned to the bottom, a mini preview floats in the corner when you scroll down to the settings, advanced cards start folded (tap any card title to open or fold it), and your social links sit in the footer instead of the top.
+- **Undo / Redo** for every change (⌘/Ctrl+Z, ⌘/Ctrl+Shift+Z).
+- **Clean up my voice** (on by default) cuts rumble and evens out loud and quiet parts of phone audio, with a voice volume slider.
+- **Desktop shortcuts:** Space or K play/pause, ← → move 0.5 s (Shift 0.1 s), I / O set start / end, X cut.
+
 ## Reels and YouTube videos
 
-Pick the **format** at the top: **Reel / Short** (9:16), **YouTube** (16:9) or **Carousel** (see below). Everything works in both: hooks, subtitles, looks, pictures, sounds, music, the lyric grid and export. YouTube exports at 1280×720, and **Save YouTube thumbnail** saves the current frame as a 1280×720 PNG, the size YouTube asks for. Use your own video file; the editor doesn't download from YouTube links.
+Pick the **format** at the top: **Reel / Short** (9:16), **YouTube** (16:9) or **Carousel** (see below). Everything works in both: hooks, subtitles, looks, pictures, sounds, music, the lyric grid and export. Export size: reels at 720p or 1080p; YouTube at 720p, 1080p, 1440p or 4K (3840×2160, needs a fast computer), and **Save YouTube thumbnail** saves the current frame as a 1280×720 PNG, the size YouTube asks for. Use your own video file; the editor doesn't download from YouTube links.
 
 ## Animations
 
