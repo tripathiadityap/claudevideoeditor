@@ -24,7 +24,18 @@ It's live at **[tripathiadityap.github.io/claudevideoeditor](https://tripathiadi
 
 ## Reels and YouTube videos
 
-Pick the **format** at the top: **Reel / Short** (9:16) or **YouTube** (16:9). Everything works in both: hooks, subtitles, looks, pictures, sounds, music, the lyric grid and export. YouTube exports at 1280×720, and **Save YouTube thumbnail** saves the current frame as a 1280×720 PNG, the size YouTube asks for. Use your own video file; the editor doesn't download from YouTube links.
+Pick the **format** at the top: **Reel / Short** (9:16), **YouTube** (16:9) or **Carousel** (see below). Everything works in both: hooks, subtitles, looks, pictures, sounds, music, the lyric grid and export. YouTube exports at 1280×720, and **Save YouTube thumbnail** saves the current frame as a 1280×720 PNG, the size YouTube asks for. Use your own video file; the editor doesn't download from YouTube links.
+
+## Carousels
+
+Pick **Carousel** as the format to build slide posts for Instagram (4:5 or 1:1) and LinkedIn.
+
+- **Layouts:** Cover (big title on a photo), Text, List (numbered points), Quote, Photo + text, and a Follow / save ending with your logo and handle.
+- **Styling:** film black, paper white or lemon backgrounds, or a photo with your LUT grade on it. Title fonts and accent colour match the reels, and `*word*` turns a word yellow.
+- **Photos:** from your device, your Pinterest board or your saved library. Tap a pin and it becomes the current slide's photo.
+- **Every slide:** handle, slide numbers, and a "swipe" cue on the first slide.
+- **Export:** **Save all slides** gives a ZIP of full-size PNGs (1080×1350 or 1080×1080) for Instagram. **Save as PDF** makes a LinkedIn document carousel. **Save this slide** saves one PNG.
+- Flip slides by tapping either side of the preview, with the arrow keys, or from the slide strip. Right-click (or press and hold) for slide actions.
 
 ## Works without Claude
 

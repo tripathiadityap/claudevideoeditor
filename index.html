@@ -47,8 +47,16 @@ header p{margin:0;color:var(--muted);font-size:13px;max-width:44ch}
 .stage{position:sticky;top:max(12px,env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:10px}
 .phone{position:relative;width:100%;aspect-ratio:9/16;max-width:100%;border-radius:18px;overflow:hidden;background:#000;box-shadow:0 0 0 1px var(--line),0 24px 60px rgba(0,0,0,.55)}
 .phone.wide{aspect-ratio:16/9}
+.phone.car45{aspect-ratio:4/5}
+.phone.car11{aspect-ratio:1/1}
+.slidenav{display:flex;align-items:center;justify-content:center;gap:12px}
+.slstrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.slstrip button{flex:0 0 auto;width:74px;min-height:62px;padding:6px;border:1px solid var(--line);border-radius:9px;background:var(--card-2);color:var(--ink);cursor:pointer;text-align:left;font:11px/1.2 var(--body)}
+.slstrip button b{display:block;font:600 10px var(--mono);color:var(--muted);margin-bottom:3px}
+.slstrip button.on{border-color:var(--lemon)}
+.slstrip button.on b{color:var(--lemon)}
 .wrap.wide{grid-template-columns:minmax(300px,600px) 1fr}
-.phone canvas{width:100%;height:100%;display:block;touch-action:none}
+.phone canvas{width:100%;height:100%;display:block;touch-action:pan-y pinch-zoom}
 .drop-hint{position:absolute;inset:auto 10px 10px 10px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:6px 10px;border-radius:8px;text-align:center;pointer-events:none}
 .transport{display:flex;align-items:center;gap:10px}
 .transport .time{font:12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;min-width:86px;text-align:right}
@@ -149,7 +157,18 @@ footer.brand b{color:var(--ink);font-weight:500;letter-spacing:-.02em;font-size:
 footer.brand nav{display:flex;flex-wrap:wrap;gap:6px 16px}
 footer.brand a{color:var(--muted);text-decoration:none}
 footer.brand a:hover{color:var(--lemon)}
-@media (max-width:760px){.wrap{grid-template-columns:1fr}.stage{position:static;max-width:380px;margin:0 auto;width:100%}}
+@media (max-width:760px){
+  .wrap{grid-template-columns:1fr}
+  .stage{position:static;max-width:420px;margin:0 auto;width:100%}
+  .phone{width:min(100%, calc(58vh * 9 / 16));margin-inline:auto}
+  .phone.wide{width:100%}
+  .phone.car45{width:min(100%, calc(58vh * 4 / 5))}
+  .phone.car11{width:min(100%, 58vh)}
+  .card{padding:14px}
+  .grid{gap:12px}
+  .opt{padding:8px 11px}
+  .btn{min-height:38px}
+}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
@@ -184,6 +203,13 @@ footer.brand a:hover{color:var(--lemon)}
       <canvas id="cv" width="720" height="1280" aria-label="Reel preview"></canvas>
       <div class="drop-hint" id="dropHint">Sample clip. Drop your video here or use “Your clip”.</div>
     </div>
+    <div class="slidenav" id="slideNav" hidden>
+      <button class="btn" id="slPrev" aria-label="Previous slide">◀</button>
+      <span class="time" id="slCount">1 / 5</span>
+      <button class="btn" id="slNext" aria-label="Next slide">▶</button>
+    </div>
+    <div class="slstrip" id="slStrip" hidden></div>
+    <div id="videoCtl">
     <div class="transport">
       <button class="btn primary play" id="playBtn">▶ Play</button>
       <input type="range" id="scrub" min="0" max="14" step="0.01" value="0" aria-label="Playhead">
@@ -197,6 +223,7 @@ footer.brand a:hover{color:var(--lemon)}
       <label><input type="checkbox" id="tGlow"> glow above head</label>
       <label><input type="checkbox" id="tSafe"> Instagram safe zone</label>
     </div>
+    </div>
   </section>
 
   <main class="grid">
@@ -204,9 +231,56 @@ footer.brand a:hover{color:var(--lemon)}
       <h2>Reel type</h2>
       <p class="lbl">Format</p>
       <div class="opts" id="fmtOpts"></div>
+      <div id="styleRow">
       <p class="lbl">Style</p>
       <div class="opts" id="modeOpts"></div>
       <p class="note" id="modeNote"></p>
+      </div>
+    </section>
+
+    <section class="card wide" id="carCard" hidden>
+      <h2>carousel</h2>
+      <p class="note">Build slides for Instagram (4:5 or square) or LinkedIn. Tap the right or left side of the preview to flip slides. Tap a Pinterest pin or your library to use it as this slide's photo.</p>
+      <div class="row">
+        <button class="btn small primary" id="slAdd">+ Add slide</button>
+        <select id="slAddLayout" aria-label="Layout for the new slide" style="width:auto"></select>
+        <button class="btn small" id="slDup">Duplicate</button>
+        <button class="btn small" id="slLeft" aria-label="Move slide left">← Move</button>
+        <button class="btn small" id="slRight" aria-label="Move slide right">Move →</button>
+        <button class="btn small danger" id="slDel">Delete</button>
+      </div>
+      <div class="editor">
+        <div class="field"><span>Layout</span><select id="slLayout"></select></div>
+        <div class="field"><span>Background</span><select id="slBg"><option value="black">Film black</option><option value="white">Paper white</option><option value="lemon">Lemon</option><option value="image">Photo</option></select></div>
+        <div class="field"><span>Small line on top</span><input type="text" id="slKicker" placeholder="e.g. privileged yapping"></div>
+      </div>
+      <div class="field"><span>Title (new line = line break, *word* = yellow)</span><textarea id="slTitle" rows="2" style="min-height:58px"></textarea></div>
+      <div class="field"><span id="slBodyLbl">Text</span><textarea id="slBody" rows="4"></textarea></div>
+      <div class="row">
+        <label class="btn small" for="slImgIn">Photo for this slide</label>
+        <input type="file" id="slImgIn" accept="image/*" hidden>
+        <button class="btn small" id="slImgClear">Remove photo</button>
+        <span class="note" id="slImgNote"></span>
+      </div>
+      <p class="lbl">Carousel settings</p>
+      <div class="opts" id="carRatio"></div>
+      <div class="opts" id="carFont"></div>
+      <div class="row">
+        <div><p class="lbl">Accent</p><div class="sws" id="carAccent"></div></div>
+        <div class="field grow"><span>Handle on every slide</span><input type="text" id="carHandle"></div>
+      </div>
+      <div class="row">
+        <label class="toggles"><input type="checkbox" id="carNums"> slide numbers</label>
+        <label class="toggles"><input type="checkbox" id="carShowHandle"> handle</label>
+        <label class="toggles"><input type="checkbox" id="carSwipe"> “swipe” on the first slide</label>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="carZip">Save all slides (ZIP of PNGs)</button>
+        <button class="btn" id="carPdf">Save as PDF (LinkedIn)</button>
+        <button class="btn" id="carOne">Save this slide</button>
+      </div>
+      <div class="progress"><i id="carBar"></i></div>
+      <p class="status" id="carStatus"></p>
     </section>
 
     <section class="card" id="lyricCard">
@@ -223,8 +297,9 @@ footer.brand a:hover{color:var(--lemon)}
       <p class="note">Song reel with no video? Add the song under Music; the reel runs as long as the song. Pictures show in the band, each one until the next starts.</p>
     </section>
 
-    <section class="card">
-      <h2>Your clip</h2>
+    <section class="card" id="clipCard">
+      <h2 id="clipTitle">Your clip</h2>
+      <div id="clipVideo">
       <p class="lbl">Video</p>
       <div class="row">
         <label class="btn primary" for="vidIn">Choose video</label>
@@ -232,6 +307,7 @@ footer.brand a:hover{color:var(--lemon)}
         <button class="btn" id="sampleBtn">Use sample</button>
       </div>
       <p class="note" id="clipInfo">Showing a built-in sample so you can try every setting first.</p>
+      </div>
       <p class="lbl">Colour grade (LUT)</p>
       <div class="opts" id="lookOpts"></div>
       <div class="row">
@@ -250,7 +326,7 @@ footer.brand a:hover{color:var(--lemon)}
       <p class="note" id="glNote"></p>
     </section>
 
-    <section class="card">
+    <section class="card" id="trimCard">
       <h2>trim &amp; cut</h2>
       <p class="note">Move the playhead, then set where the video starts and ends. Cut out bad takes from the middle. Preview and export both skip them.</p>
       <div class="timeline" id="tl" aria-hidden="true"></div>
@@ -303,7 +379,7 @@ footer.brand a:hover{color:var(--lemon)}
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="textCard">
       <h2 id="textTitle">What you say</h2>
       <p class="note" id="textNote">One caption per line: start time, then the words. Wrap a word in *stars* to make it pop.</p>
       <textarea id="subText" rows="8" spellcheck="false"></textarea>
@@ -320,7 +396,7 @@ footer.brand a:hover{color:var(--lemon)}
       <p class="note" id="textHelp">“Time it automatically” takes plain text (no times), splits it into captions and spreads them across the clip.</p>
     </section>
 
-    <section class="card">
+    <section class="card" id="sfxCard">
       <h2>Sound effects</h2>
       <p class="lbl">Sound when a picture appears</p>
       <div class="opts" id="sfxOpts"></div>
@@ -335,7 +411,7 @@ footer.brand a:hover{color:var(--lemon)}
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="evCard">
       <h2>Extra sounds</h2>
       <p class="note">Drop any sound anywhere on the reel. Move the playhead, pick a sound, add it. Stack as many as you like.</p>
       <div class="row">
@@ -350,7 +426,7 @@ footer.brand a:hover{color:var(--lemon)}
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="musicCard">
       <h2>Music</h2>
       <div class="row">
         <label class="btn" for="musIn">Choose a track</label>
@@ -387,7 +463,7 @@ footer.brand a:hover{color:var(--lemon)}
       <p class="note">Tip: you can also drag an image straight from your Pinterest tab onto the preview.</p>
     </section>
 
-    <section class="card wide">
+    <section class="card wide" id="picsCard">
       <h2>Pictures in the reel</h2>
       <p class="note">Add pictures, then tap one to set when it shows and how. Drag a picture on the preview to move it.</p>
       <p class="lbl">My logos</p>
@@ -423,7 +499,7 @@ footer.brand a:hover{color:var(--lemon)}
       <div class="field"><span>Series text</span><input type="text" id="xSeriesText"></div>
     </section>
 
-    <section class="card">
+    <section class="card" id="exportCard">
       <h2>Export</h2>
       <p class="note" id="expNote">Plays the reel once from the start and records it at 720×1280 with all sound. Keep this tab open until it finishes.</p>
       <div class="row">
@@ -507,7 +583,9 @@ let sfxEvents = [], evId = 1;
 function sfxChoices(){ const o=[["none","No sound"]]; for (const [k,[n]] of Object.entries(SFX)) if (k!=="none") o.push([k,n]); for (const [k,n] of Object.entries(MORE_SFX)) o.push([k,n]); for (const [k,v] of Object.entries(customSfx)) o.push([k,"★ "+v.name]); return o; }
 
 /* ---------- state ---------- */
-const FORMATS = {reel:["Reel / Short","9:16 vertical"], yt:["YouTube","16:9 landscape"]};
+const FORMATS = {reel:["Reel / Short","9:16 vertical"], yt:["YouTube","16:9 landscape"], carousel:["Carousel","slides for IG & LinkedIn"]};
+const CAR_LAYOUTS = {cover:"Cover", text:"Text", list:"List", quote:"Quote", image:"Photo + text", cta:"Follow / save"};
+const isCar=()=>S.fmt==="carousel";
 const MODES = {talk:["Talking head","house style: film look, hook, yellow subtitles"], lyric:["Lyric grid","text-only songs and voice-overs"]};
 const LY_BG = {band:["Film band","16:9 band on black, teal film"], full:["Full pictures","pictures fill the frame"], black:["Black","plain"], white:["White","black words, no glow"]};
 const DEFAULTS = {
@@ -515,6 +593,13 @@ const DEFAULTS = {
   mode:"talk",
   ly:{bg:"band", size:92, phrase:5, glow:true, grade:"teal"},
   trim:{a:0, b:0},
+  car:{ratio:"45", titleFont:"helv", accent:"#F4F83A", handle:"@talkaditalk", nums:true, showHandle:true, swipe:true, slides:[
+    {layout:"cover", bg:"image", kicker:"privileged yapping", title:"nobody tells you\nhow *editing* works", body:"", img:"sample"},
+    {layout:"text", bg:"black", kicker:"", title:"the cut is the *story*", body:"What you leave out matters more than what you keep. Watch your raw clip once and mark every line you'd skip."},
+    {layout:"list", bg:"black", kicker:"how I edit", title:"my 4-step edit", body:"Cut the dead air\nHook in the first 2 seconds\nYellow subtitles, 2 to 3 words\nOne picture per idea"},
+    {layout:"quote", bg:"lemon", kicker:"", title:"edit like nobody's watching. post like everyone is.", body:"@talkaditalk"},
+    {layout:"cta", bg:"black", kicker:"", title:"save this for\nyour next edit", body:"follow for more privileged yapping"}
+  ]},
   lyricText:"0:00.3 nobody\n0:00.7 talks\n0:01.1 about\n0:01.5 the\n0:01.9 quiet|part\n0:03.0 /\n0:03.1 the\n0:03.4 cuts\n0:03.8 you\n0:04.2 never\n0:04.6 post\n0:05.8 /\n0:05.9 every\n0:06.3 frame\n0:06.8 you\n0:07.1 throw\n0:07.5 away\n0:08.7 /\n0:08.8 makes\n0:09.2 the\n0:09.5 one\n0:09.9 you\n0:10.3 keep\n0:13.8 /",
   look:"film", lutAmt:1, vignette:true, grain:.5, topFade:false,
   hook:{text:"nobody's saying it,\nso I will", sub:"[about editing]", font:"helv", color:"#FFFFFF", size:80, y:900, dur:3.5},
@@ -959,6 +1044,7 @@ function renderLyric(){
 }
 
 function render(){
+  if (isCar()) return renderCarousel();
   if (S.mode==="lyric") return renderLyric();
   const t=now(); hitRects=[];
   ctx.setTransform(SC,0,0,SC,0,0); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
@@ -1081,19 +1167,32 @@ function buildUI(){
 }
 
 function applyFormat(){
-  const wide=yt();
-  W = wide?1920:1080; H = wide?1080:1920;
-  cv.width = wide?1280:720; cv.height = wide?720:1280; SC = cv.width/W;
-  $("phone").classList.toggle("wide",wide); document.querySelector(".wrap").classList.toggle("wide",wide);
+  const wide=yt(), car=isCar(), sq=car && S.car.ratio==="11";
+  W = wide?1920:1080; H = wide?1080:(car?(sq?1080:1350):1920);
+  cv.width = wide?1280:(car?864:720); cv.height = wide?720:(car?(sq?864:1080):1280); SC = cv.width/W;
+  $("phone").classList.toggle("wide",wide); $("phone").classList.toggle("car45",car&&!sq); $("phone").classList.toggle("car11",sq);
+  document.querySelector(".wrap").classList.toggle("wide",wide);
+  if (car && playing) pause();
+  updateCards();
   $("expNote").textContent = `Plays the ${wide?"video":"reel"} once from the start and records it at ${cv.width}×${cv.height} with all sound. Keep this tab open until it finishes.`;
   $("thumbBtn").textContent = wide ? "Save YouTube thumbnail (1280×720)" : "Save cover image";
   $("tSafe").parentElement.lastChild.textContent = wide ? " title-safe guide" : " Instagram safe zone";
   $("dropHint").textContent = wide ? "Sample clip. Drop your YouTube video here or use “Your clip”." : "Sample clip. Drop your video here or use “Your clip”.";
   save();
 }
+const VIDEO_ONLY=["videoCtl","styleRow","trimCard","textCard","sfxCard","evCard","musicCard","picsCard","exportCard","clipVideo"];
+function updateCards(){
+  const car=isCar(), ly=S.mode==="lyric";
+  VIDEO_ONLY.forEach(id=>$(id).hidden=car);
+  ["hookCard","subCard","extrasCard"].forEach(id=>$(id).hidden=car||ly); $("lyricCard").hidden=car||!ly;
+  $("carCard").hidden=!car; $("slideNav").hidden=!car; $("slStrip").hidden=!car;
+  $("clipTitle").textContent = car ? "look" : "your clip";
+  $("dropHint").hidden = car || hasVideo;
+  if (car) renderCarUI();
+}
 function applyMode(){
   const ly=S.mode==="lyric";
-  ["hookCard","subCard","extrasCard"].forEach(id=>$(id).hidden=ly); $("lyricCard").hidden=!ly;
+  updateCards();
   $("modeNote").textContent= ly
     ? "Words pop into a loose grid on their beat and stay until the screen clears. No hook, subtitles, handle or follow nudge. Use it for text-only song reels and voice-overs; talking-head reels stay in the house style."
     : "Your normal edit: film look, Helvetica hook, yellow subtitles, picture cards, punch-ins and follow nudges.";
@@ -1137,6 +1236,7 @@ $("sfxUp").onchange=async e=>{
 
 /* ---------- Pinterest ---------- */
 function addPicFromUrl(url,title){
+  if (isCar()){ setSlideImage(url,title); return; }
   const img=new Image(); img.crossOrigin="anonymous";
   img.onload=()=>{ const i=pics.length; const p={id:picId++,img,src:url,t0:+Math.min(now(),Math.max(0,dur()-1)).toFixed(1),dur:2,mode:"card",anim:["pop","slide","drop"][i%3],sfx:"default",x:i%2?740:340,y:660,w:340,rot:i%2?4:-4}; pics.push(p); selectPic(p); $("pinNote").textContent=(title?`Added “${title}”`:"Added")+" at "+fmt(p.t0)+"."; };
   img.onerror=()=>{ $("pinNote").textContent="That picture wouldn't load here. Save it to your device and use “Add pictures” instead."; };
@@ -1272,6 +1372,7 @@ cv.addEventListener("pointerdown",e=>{ if (e.button===2) return; const q=toCanva
   if (e.pointerType!=="mouse"){ clearTimeout(lp&&lp.t); lp={x:e.clientX,y:e.clientY,t:setTimeout(()=>{ drag=null; openCtx(e.clientX,e.clientY,q,picAt(q),true); lp=null; if (navigator.vibrate) try{navigator.vibrate(10);}catch(_){} },520)}; }
   if (p){ drag={p,dx:q.x-XS(p.x),dy:q.y-Y(p.y)}; selectPic(p); cv.setPointerCapture(e.pointerId); } });
 cv.addEventListener("pointermove",e=>{ if (lp && Math.hypot(e.clientX-lp.x,e.clientY-lp.y)>10){ clearTimeout(lp.t); lp=null; } if(!drag) return; const q=toCanvas(e); drag.p.x=(q.x-drag.dx)*1080/W; drag.p.y=(q.y-drag.dy)*1920/H; });
+cv.addEventListener("touchstart",e=>{ if (isCar()) return; const t=e.touches[0]; if (!t) return; const r=cv.getBoundingClientRect(); const q={x:(t.clientX-r.left)/r.width*W,y:(t.clientY-r.top)/r.height*H}; if (picAt(q)) e.preventDefault(); },{passive:false});
 const endPress=()=>{ drag=null; if (lp){ clearTimeout(lp.t); lp=null; } };
 cv.addEventListener("pointerup",endPress); cv.addEventListener("pointercancel",endPress);
 cv.addEventListener("contextmenu",e=>{ e.preventDefault(); const q=toCanvas(e); openCtx(e.clientX,e.clientY,q,picAt(q)); });
@@ -1281,6 +1382,15 @@ let picDrop=null, ctxOpenedAt=0;
 function closeCtx(){ $("ctx").hidden=true; }
 function openCtx(cx,cy,q,pic,touch){
   const m=$("ctx"); m.innerHTML=""; ctxOpenedAt=touch?performance.now():0; if (touch){ cx+=14; cy+=14; }
+  if (isCar()){
+    const head=t=>{ const d=document.createElement("div"); d.className="head"; d.textContent=t; m.appendChild(d); };
+    const item=(label,fn,cls)=>{ const b=document.createElement("button"); b.setAttribute("role","menuitem"); if(cls) b.className=cls; b.innerHTML="<span></span><small></small>"; b.firstChild.textContent=label; b.onclick=()=>{ if (performance.now()-ctxOpenedAt<450) return; closeCtx(); fn(); }; m.appendChild(b); };
+    head(`Slide ${carIdx+1} of ${slides().length}`);
+    if (carIdx>0) item("Previous slide",()=>$("slPrev").click()); if (carIdx<slides().length-1) item("Next slide",()=>$("slNext").click());
+    item("Add a slide after",()=>$("slAdd").click()); item("Duplicate slide",()=>$("slDup").click()); item("Photo for this slide",()=>$("slImgIn").click());
+    item("Save this slide",()=>$("carOne").click()); item("Delete slide",()=>$("slDel").click(),"danger");
+    m.hidden=false; const r=m.getBoundingClientRect(); m.style.left=Math.max(12,Math.min(cx,innerWidth-r.width-12))+"px"; m.style.top=Math.max(12,Math.min(cy,innerHeight-r.height-12))+"px"; return;
+  }
   const head=t=>{ const d=document.createElement("div"); d.className="head"; d.textContent=t; m.appendChild(d); };
   const item=(label,fn,hint,cls)=>{ const b=document.createElement("button"); b.setAttribute("role","menuitem"); if(cls) b.className=cls; b.innerHTML="<span></span><small></small>"; b.firstChild.textContent=label; b.lastChild.textContent=hint||""; b.onclick=()=>{ if (performance.now()-ctxOpenedAt<450) return; closeCtx(); fn(); }; m.appendChild(b); };
   const hr=()=>m.appendChild(document.createElement("hr"));
@@ -1456,6 +1566,180 @@ function enforceEdit(){
   const c=cutAt(t); if (c){ seek(Math.min(c.b, dur())); }
 }
 
+/* ---------- carousel ---------- */
+let carIdx=0; const carImgs={};
+const CAR_BG={black:"#0F0E0C", white:"#F4F1EA", lemon:"#F4F83A", image:"#000"};
+const slides=()=>S.car.slides;
+const curSlide=()=>slides()[clamp(carIdx,0,slides().length-1)];
+function sampleCover(){
+  const c=document.createElement("canvas"); c.width=1080; c.height=1350; const g=c.getContext("2d");
+  const gr=g.createLinearGradient(0,0,0,1350); gr.addColorStop(0,"#3a2a20"); gr.addColorStop(.6,"#6b4a33"); gr.addColorStop(1,"#1c140f"); g.fillStyle=gr; g.fillRect(0,0,1080,1350);
+  const lg=g.createRadialGradient(840,330,10,840,330,520); lg.addColorStop(0,"rgba(255,214,150,.8)"); lg.addColorStop(1,"rgba(255,214,150,0)"); g.fillStyle=lg; g.fillRect(0,0,1080,1350);
+  g.fillStyle="#1d1511"; g.beginPath(); g.ellipse(520,1220,360,300,0,Math.PI,0); g.fill(); g.fillRect(160,1220,720,200);
+  g.fillStyle="#8a5f45"; g.fillRect(482,820,76,140); g.beginPath(); g.ellipse(520,660,160,198,0,0,Math.PI*2); g.fill();
+  g.fillStyle="#1a120d"; g.beginPath(); g.ellipse(520,545,186,148,0,Math.PI,0); g.fill(); g.fillRect(334,530,40,320); g.fillRect(666,530,40,320);
+  for (let i=0;i<4000;i++){ g.fillStyle=`rgba(255,255,255,${Math.random()*.04})`; g.fillRect(Math.random()*1080,Math.random()*1350,2,2); }
+  return c;
+}
+function slideImg(sl){
+  if (!sl.img) return null;
+  if (!carImgs[sl.img]){ if (sl.img==="sample") carImgs[sl.img]=sampleCover(); else { const im=new Image(); im.crossOrigin="anonymous"; im.src=sl.img; carImgs[sl.img]=im; } }
+  const im=carImgs[sl.img]; if (im instanceof HTMLImageElement && !(im.complete && im.naturalWidth)) return null; return im;
+}
+function imgSize(im){ return im instanceof HTMLImageElement ? [im.naturalWidth,im.naturalHeight] : [im.width,im.height]; }
+function wrapRich(text,font,maxW,hs=1){
+  ctx.save(); ctx.font=font; const out=[];
+  for (const para of String(text||"").split("\n")){ const words=para.split(/\s+/).filter(Boolean); let line="";
+    for (const w of words){ const t=line?line+" "+w:w; if (ctx.measureText(t.replace(/\*/g,"")).width*hs>maxW && line){ out.push(line); line=w; } else line=t; }
+    out.push(line); }
+  ctx.restore(); return out;
+}
+function drawRich(line,x,y,font,color,accent,align="left",hs=1,spacing=0){
+  ctx.save(); ctx.font=font; try{ ctx.letterSpacing=spacing+"px"; }catch(e){}
+  const parts=line.split(/(\*[^*]+\*)/).filter(Boolean).map(p=>({t:p.replace(/\*/g,""),a:/^\*.*\*$/.test(p)}));
+  const total=parts.reduce((n,p)=>n+ctx.measureText(p.t).width,0);
+  ctx.translate(x,y); ctx.scale(hs,1); let cx = align==="center" ? -total/2 : 0;
+  ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+  for (const p of parts){ ctx.fillStyle=p.a?accent:color; ctx.fillText(p.t,cx,0); cx+=ctx.measureText(p.t).width; }
+  ctx.restore();
+}
+function titleBlock(text,x,yTop,size,maxW,color,align="left",fromBottom=false){
+  const f=HOOK_FONTS[S.car.titleFont]||HOOK_FONTS.helv; const hs=f.hs||1; const font=fontStr(f,size); const t=f.up?String(text).toUpperCase():String(text);
+  const lines=wrapRich(t,font,maxW,hs); const lh=size*1.04;
+  let y = fromBottom ? yTop-(lines.length-1)*lh : yTop+size*.8;
+  lines.forEach((l,i)=>drawRich(l,x,y+i*lh,font,color,S.car.accent,align,hs,f.sp||0));
+  return fromBottom ? yTop-(lines.length-1)*lh-size*.8 : y+(lines.length-1)*lh+size*.25;
+}
+function bodyBlock(text,x,y,size,maxW,color,align="left",lh=1.4){
+  const font=`400 ${size}px ${HOOK_FONTS.helv.css}`; const lines=wrapRich(text,font,maxW);
+  lines.forEach((l,i)=>drawRich(l,x,y+size+i*size*lh,font,color,S.car.accent,align)); return y+size+lines.length*size*lh;
+}
+function kicker(text,x,y,color,align="left"){ if (!text) return; ctx.save(); ctx.font=`600 30px ${HOOK_FONTS.helv.css}`; try{ ctx.letterSpacing="4px"; }catch(e){} ctx.fillStyle=color; ctx.textAlign=align; ctx.fillText(String(text).toUpperCase(),x,y); ctx.restore(); }
+const LOCAL=location.protocol==="file:"; // local files taint the canvas for export, so skip bundled logos there
+const markImg=new Image(); markImg.src="assets/talkaditalk-mark.png";
+function renderCarousel(){
+  const sl=curSlide(); if (!sl) return; hitRects=[];
+  ctx.setTransform(SC,0,0,SC,0,0);
+  const M=90, CW=W-2*M, bg=sl.bg||"black"; const light=bg==="white"||bg==="lemon";
+  const ink= light?"#141310":"#F3EFE6", muted= light?"rgba(20,19,16,.6)":"rgba(243,239,230,.6)";
+  const accent = bg==="lemon" ? "#141310" : S.car.accent;
+  const keepAcc=S.car.accent; S.car.accent=accent;
+  ctx.fillStyle=CAR_BG[bg]||"#000"; ctx.fillRect(0,0,W,H);
+  const im=slideImg(sl); const look=effLook();
+  const photo=(x,y,w,h,r)=>{ if (!im) { ctx.fillStyle="#24211c"; if (r){ rr(ctx,x,y,w,h,r); ctx.fill(); } else ctx.fillRect(x,y,w,h); ctx.fillStyle="#6d665b"; ctx.font=`500 30px ${HOOK_FONTS.helv.css}`; ctx.textAlign="center"; ctx.fillText(sl.img?"loading photo…":"add a photo for this slide",x+w/2,y+h/2); ctx.textAlign="left"; return; }
+    const [iw,ih]=imgSize(im); ctx.save(); if (r){ rr(ctx,x,y,w,h,r); ctx.clip(); } drawInRect(im,iw,ih,x,y,w,h,1); ctx.restore();
+    if (GL.ok && look!=="none") gradeRegion(look,S.lutAmt,Math.round(x*SC),Math.round(y*SC),Math.round(w*SC),Math.round(h*SC)); };
+  const L=sl.layout;
+  if (bg==="image" && L!=="image"){ photo(0,0,W,H,0); const g=ctx.createLinearGradient(0,H*.35,0,H); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,.82)"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); if (L!=="cover"){ ctx.fillStyle="rgba(0,0,0,.35)"; ctx.fillRect(0,0,W,H); } }
+  const textInk = bg==="image" ? "#FFFFFF" : ink;
+  if (L==="cover"){
+    const top=titleBlock(sl.title,M,H-200,112,CW,textInk,"left",true);
+    kicker(sl.kicker,M,top-18,S.car.accent);
+    if (sl.body) bodyBlock(sl.body,M,H-185,34,CW,bg==="image"?"rgba(255,255,255,.8)":muted);
+  } else if (L==="text"){
+    kicker(sl.kicker,M,M+60,S.car.accent);
+    const y=titleBlock(sl.title,M,M+(sl.kicker?90:40),88,CW,textInk);
+    bodyBlock(sl.body,M,y+30,46,CW,bg==="image"?"rgba(255,255,255,.88)":ink);
+  } else if (L==="list"){
+    kicker(sl.kicker,M,M+60,S.car.accent);
+    let y=titleBlock(sl.title,M,M+(sl.kicker?90:40),84,CW,textInk)+40;
+    String(sl.body||"").split("\n").filter(x=>x.trim()).forEach((item,i)=>{
+      ctx.save(); ctx.font=`700 46px ${HOOK_FONTS.helv.css}`; ctx.fillStyle=S.car.accent; ctx.fillText(String(i+1).padStart(2,"0"),M,y+46); ctx.restore();
+      y=bodyBlock(item,M+96,y,44,CW-96,bg==="image"?"#fff":ink,"left",1.3)+30; });
+  } else if (L==="quote"){
+    ctx.save(); ctx.font=`700 300px Georgia,serif`; ctx.fillStyle=S.car.accent; ctx.fillText("“",M-14,M+250); ctx.restore();
+    const y=titleBlock(sl.title,M,M+260,76,CW,textInk);
+    if (sl.body){ ctx.save(); ctx.font=`500 34px ${HOOK_FONTS.helv.css}`; ctx.fillStyle=bg==="image"?"rgba(255,255,255,.75)":muted; ctx.fillText(sl.body,M,y+70); ctx.restore(); }
+  } else if (L==="image"){
+    const ph=Math.round(H*0.52); photo(M,M,CW,ph,22);
+    kicker(sl.kicker,M,M+ph+70,S.car.accent);
+    const y=titleBlock(sl.title,M,M+ph+(sl.kicker?100:50),70,CW,ink);
+    bodyBlock(sl.body,M,y+16,38,CW,muted);
+  } else if (L==="cta"){
+    if (!LOCAL && markImg.complete && markImg.naturalWidth){ const mw=300, mh=mw*markImg.naturalHeight/markImg.naturalWidth; ctx.save(); rr(ctx,(W-mw)/2,H*0.16,mw,mh,18); ctx.clip(); ctx.drawImage(markImg,(W-mw)/2,H*0.16,mw,mh); ctx.restore(); }
+    const y=titleBlock(sl.title,W/2,H*0.42,92,CW,textInk,"center");
+    const by=bodyBlock(sl.body,W/2,y+10,38,CW,bg==="image"?"rgba(255,255,255,.85)":muted,"center");
+    const hd=S.car.handle||""; if (hd){ ctx.save(); ctx.font=`700 40px ${HOOK_FONTS.helv.css}`; const w=ctx.measureText(hd).width+70; rr(ctx,(W-w)/2,by+50,w,84,42); ctx.fillStyle=bg==="lemon"?"#141310":S.car.accent; ctx.fill(); ctx.fillStyle=bg==="lemon"?"#F4F83A":"#141310"; ctx.textAlign="center"; ctx.fillText(hd,W/2,by+106); ctx.restore(); }
+  }
+  // footer
+  ctx.save(); ctx.font=`500 28px ${HOOK_FONTS.helv.css}`; const fc = bg==="image" ? "rgba(255,255,255,.75)" : muted;
+  if (S.car.showHandle && S.car.handle && L!=="cta"){ ctx.fillStyle=fc; ctx.textAlign="left"; ctx.fillText(S.car.handle,M,H-58); }
+  if (S.car.nums){ ctx.fillStyle=fc; ctx.textAlign="right"; ctx.fillText(`${carIdx+1}/${slides().length}`,W-M,H-58); }
+  if (S.car.swipe && carIdx===0 && slides().length>1){ ctx.font=`700 30px ${HOOK_FONTS.helv.css}`; const tx="swipe →"; const w=ctx.measureText(tx).width+48; const x=W-M-w, y=H-58-(S.car.nums?82:44); rr(ctx,x,y,w,58,29); ctx.fillStyle=S.car.accent; ctx.fill(); ctx.fillStyle="#141310"; ctx.textAlign="center"; ctx.fillText(tx,x+w/2,y+40); }
+  ctx.restore();
+  S.car.accent=keepAcc;
+  if (S.grain>0 && bg!=="white" && bg!=="lemon") drawGrain(0.5);
+}
+/* carousel UI */
+function renderCarUI(){
+  carIdx=clamp(carIdx,0,slides().length-1); const sl=curSlide();
+  $("slCount").textContent=`${carIdx+1} / ${slides().length}`;
+  const st=$("slStrip"); st.innerHTML="";
+  slides().forEach((x,i)=>{ const b=document.createElement("button"); b.type="button"; b.className=i===carIdx?"on":""; b.innerHTML="<b></b><span></span>"; b.firstChild.textContent=`${i+1} · ${CAR_LAYOUTS[x.layout]||x.layout}`; b.lastChild.textContent=String(x.title||"").replace(/\*/g,"").slice(0,34); b.onclick=()=>{ carIdx=i; renderCarUI(); }; st.appendChild(b); });
+  $("slLayout").value=sl.layout; $("slBg").value=sl.bg||"black"; $("slKicker").value=sl.kicker||""; $("slTitle").value=sl.title||""; $("slBody").value=sl.body||"";
+  $("slBodyLbl").textContent = sl.layout==="list" ? "List items (one per line)" : sl.layout==="quote" ? "Who said it" : "Text";
+  $("slImgNote").textContent = sl.img ? (sl.img==="sample"?"Sample photo":"Photo set") : "No photo";
+  $("slPrev").disabled=carIdx===0; $("slNext").disabled=carIdx===slides().length-1;
+}
+function setSlideImage(url,title){ const sl=curSlide(); sl.img=url; if (sl.bg!=="image" && sl.layout!=="image") sl.bg="image"; save(); renderCarUI(); $("slImgNote").textContent=title?`Using “${title}”`:"Photo set"; }
+function initCarUI(){
+  const lay=Object.entries(CAR_LAYOUTS).map(([k,n])=>`<option value="${k}">${n}</option>`).join("");
+  $("slLayout").innerHTML=lay; $("slAddLayout").innerHTML=lay; $("slAddLayout").value="text";
+  const bindSl=(id,key)=>$(id).addEventListener("input",()=>{ curSlide()[key]=$(id).value; save(); if (key==="layout"||key==="title") renderCarUI(); });
+  bindSl("slLayout","layout"); bindSl("slBg","bg"); bindSl("slKicker","kicker"); bindSl("slTitle","title"); bindSl("slBody","body");
+  $("slPrev").onclick=()=>{ carIdx--; renderCarUI(); }; $("slNext").onclick=()=>{ carIdx++; renderCarUI(); };
+  $("slAdd").onclick=()=>{ const k=$("slAddLayout").value; slides().splice(carIdx+1,0,{layout:k,bg:k==="cover"?"image":"black",kicker:"",title:k==="cta"?"follow for more":"new slide",body:k==="list"?"First point\nSecond point\nThird point":""}); carIdx++; save(); renderCarUI(); };
+  $("slDup").onclick=()=>{ slides().splice(carIdx+1,0,JSON.parse(JSON.stringify(curSlide()))); carIdx++; save(); renderCarUI(); };
+  $("slDel").onclick=()=>{ if (slides().length<=1){ $("carStatus").textContent="A carousel needs at least one slide."; return; } slides().splice(carIdx,1); carIdx=Math.min(carIdx,slides().length-1); save(); renderCarUI(); };
+  const mv=d=>{ const j=carIdx+d; if (j<0||j>=slides().length) return; const a=slides(); [a[carIdx],a[j]]=[a[j],a[carIdx]]; carIdx=j; save(); renderCarUI(); };
+  $("slLeft").onclick=()=>mv(-1); $("slRight").onclick=()=>mv(1);
+  $("slImgIn").onchange=async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return;
+    try { const b=await shrinkImage(f,2000); const fr=new FileReader(); fr.onload=()=>setSlideImage(fr.result,f.name.replace(/\.[^.]+$/,"")); fr.readAsDataURL(b); } catch(err){ $("slImgNote").textContent="Couldn't read that picture."; } };
+  $("slImgClear").onclick=()=>{ const sl=curSlide(); sl.img=null; if (sl.bg==="image") sl.bg="black"; save(); renderCarUI(); };
+  optButtons($("carRatio"),[["45",["4:5 portrait","Instagram, LinkedIn"]],["11",["1:1 square","classic"]]],S.car.ratio,k=>{ S.car.ratio=k; applyFormat(); },null,false);
+  optButtons($("carFont"),Object.entries(HOOK_FONTS).map(([k,f])=>[k,[f.n,"title font"]]),S.car.titleFont,k=>S.car.titleFont=k,(span,k)=>{ const f=HOOK_FONTS[k]; span.style.fontFamily=f.css; span.style.fontStyle=f.it?"italic":"normal"; });
+  swatches($("carAccent"),["#F4F83A","#FFFFFF","#F2B8C6","#9BE7FF","#E3262E"],S.car.accent,c=>S.car.accent=c,true);
+  bindText("carHandle",()=>S.car.handle,v=>S.car.handle=v);
+  bindCheck("carNums",()=>S.car.nums,v=>S.car.nums=v); bindCheck("carShowHandle",()=>S.car.showHandle,v=>S.car.showHandle=v); bindCheck("carSwipe",()=>S.car.swipe,v=>S.car.swipe=v);
+  $("carZip").onclick=()=>exportCarousel("zip"); $("carPdf").onclick=()=>exportCarousel("pdf"); $("carOne").onclick=()=>exportCarousel("one");
+}
+/* full-resolution slide rendering + exports */
+async function waitSlideImages(){ for (const sl of slides()){ const im=slideImg(sl)||carImgs[sl.img]; if (im instanceof HTMLImageElement && !im.complete) await new Promise(r=>{ im.onload=im.onerror=r; setTimeout(r,8000); }); } if (!markImg.complete) await new Promise(r=>{ markImg.onload=markImg.onerror=r; setTimeout(r,4000); }); }
+function slideBlob(i,type="image/png",q){ return new Promise(res=>{ const keep=[cv.width,cv.height,SC,carIdx]; cv.width=W; cv.height=H; SC=1; carIdx=i; renderCarousel(); cv.toBlob(b=>{ cv.width=keep[0]; cv.height=keep[1]; SC=keep[2]; carIdx=keep[3]; res(b); },type,q); }); }
+const CRC_T=(()=>{ const t=new Uint32Array(256); for (let n=0;n<256;n++){ let c=n; for (let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+function crc32(b){ let c=0xFFFFFFFF; for (let i=0;i<b.length;i++) c=CRC_T[(c^b[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function makeZip(files){ // stored (no compression) zip
+  const enc=new TextEncoder(); const parts=[], central=[]; let off=0;
+  for (const f of files){ const name=enc.encode(f.name), crc=crc32(f.data), n=f.data.length;
+    const h=new DataView(new ArrayBuffer(30)); h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(8,0,true); h.setUint32(14,crc,true); h.setUint32(18,n,true); h.setUint32(22,n,true); h.setUint16(26,name.length,true);
+    parts.push(new Uint8Array(h.buffer),name,f.data);
+    const c=new DataView(new ArrayBuffer(46)); c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint32(16,crc,true); c.setUint32(20,n,true); c.setUint32(24,n,true); c.setUint16(28,name.length,true); c.setUint32(42,off,true);
+    central.push(new Uint8Array(c.buffer),name); off+=30+name.length+n; }
+  const csize=central.reduce((a,b)=>a+b.length,0); const e=new DataView(new ArrayBuffer(22)); e.setUint32(0,0x06054b50,true); e.setUint16(8,files.length,true); e.setUint16(10,files.length,true); e.setUint32(12,csize,true); e.setUint32(16,off,true);
+  return new Blob([...parts,...central,new Uint8Array(e.buffer)],{type:"application/zip"});
+}
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+async function exportCarousel(kind){
+  const st=$("carStatus"), bar=$("carBar"); const day=new Date().toISOString().slice(0,10); const n=slides().length;
+  ["carZip","carPdf","carOne"].forEach(id=>$(id).disabled=true);
+  try{
+    st.textContent="Getting photos ready…"; await waitSlideImages();
+    if (kind==="one"){ const b=await slideBlob(carIdx); await saveFile(`talkaditalk-carousel-${day}-${carIdx+1}.png`,b,st); return; }
+    if (kind==="zip"){ const files=[]; for (let i=0;i<n;i++){ st.textContent=`Rendering slide ${i+1} of ${n}…`; bar.style.width=(100*i/n)+"%"; const b=await slideBlob(i); files.push({name:`${String(i+1).padStart(2,"0")}.png`,data:new Uint8Array(await b.arrayBuffer())}); }
+      bar.style.width="100%"; await saveFile(`talkaditalk-carousel-${day}.zip`,makeZip(files),st); return; }
+    if (kind==="pdf"){ st.textContent="Loading the PDF maker…"; if (!window.jspdf) await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+      const {jsPDF}=window.jspdf; const doc=new jsPDF({orientation:"p",unit:"px",format:[W,H],hotfixes:["px_scaling"],compress:true});
+      for (let i=0;i<n;i++){ st.textContent=`Rendering slide ${i+1} of ${n}…`; bar.style.width=(100*i/n)+"%"; const b=await slideBlob(i,"image/jpeg",.92); const url=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(b); }); if (i) doc.addPage([W,H],"p"); doc.addImage(url,"JPEG",0,0,W,H); }
+      bar.style.width="100%"; await saveFile(`talkaditalk-carousel-${day}.pdf`,doc.output("blob"),st); return; }
+  } catch(err){ const m=String(err&&err.message||"");
+    st.textContent = /taint/i.test(m) ? (LOCAL ? "Logos can't be exported when the editor is opened as a local file. Use tripathiadityap.github.io/claudevideoeditor instead." : "A photo from a link blocked the export. Save it to your device and use “Photo for this slide”.")
+      : /jspdf|script|load/i.test(m) || !window.jspdf && kind==="pdf" ? "Couldn't load the PDF maker. Check your connection and try again." : "Export failed: "+(m||"try again")+"."; }
+  finally { ["carZip","carPdf","carOne"].forEach(id=>$(id).disabled=false); setTimeout(()=>bar.style.width="0",1500); }
+}
+/* tap left/right side of the preview to flip slides */
+cv.addEventListener("click",e=>{ if (!isCar() || !$("ctx").hidden) return; const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width; if (x<0.35 && carIdx>0){ carIdx--; renderCarUI(); } else if (x>0.65 && carIdx<slides().length-1){ carIdx++; renderCarUI(); } });
+document.addEventListener("keydown",e=>{ if (!isCar() || e.target.matches("textarea,input,select")) return; if (e.key==="ArrowRight" && carIdx<slides().length-1){ carIdx++; renderCarUI(); } if (e.key==="ArrowLeft" && carIdx>0){ carIdx--; renderCarUI(); } });
+
 /* ---------- thumbnail / cover image ---------- */
 async function saveFile(name,blob,statusEl){
   const dl=window.claude?.use ? await window.claude.use("downloads").catch(()=>null) : null;
@@ -1484,7 +1768,7 @@ $("thumbBtn").onclick=()=>{
 })();
 
 /* ---------- boot ---------- */
-initGL(); pics=samplePics(); refreshSubs(); buildUI(); renderTimeline(); loadPins(); initLibrary();
+initGL(); pics=samplePics(); refreshSubs(); initCarUI(); buildUI(); renderTimeline(); loadPins(); initLibrary();
 Object.values(HOOK_FONTS).concat(Object.values(SUB_FONTS)).forEach(f=>{ try{ document.fonts.load(fontStr(f,40)); }catch(e){} });
 requestAnimationFrame(loop);
 })();
