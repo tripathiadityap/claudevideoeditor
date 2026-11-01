@@ -25,6 +25,7 @@
   --paper:#171614; --card:#201F1C; --ink:#EEEAE2; --muted:#9C968B; --line:#34312C;
   --accent:#6E98F5; --accent-ink:#0E1424; --chip:#2A2824; --danger:#EC6A60; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--body);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
@@ -76,6 +77,13 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
 .pic.on{border:1.6px solid var(--ink)}
 .pic.add{display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--muted);font-size:12px;height:126px;gap:4px}
 .pic.add b{font-size:26px;font-weight:400;line-height:1}
+.pins{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;max-height:330px;overflow-y:auto}
+.pins button{padding:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer;background:var(--paper);aspect-ratio:3/4}
+.pins img{width:100%;height:100%;object-fit:cover;display:block}
+.pins .empty{grid-column:1/-1;color:var(--muted);font-size:12.5px;padding:10px;border:1px dashed var(--line);border-radius:9px;aspect-ratio:auto;cursor:default}
+.evlist{display:flex;flex-direction:column;gap:6px}
+.ev{display:grid;grid-template-columns:76px 1fr auto auto;gap:6px;align-items:center}
+.ev input,.ev select{padding:5px 7px}
 .editor{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .hooks{display:flex;flex-direction:column;gap:6px}
 .hooks button{text-align:left}
@@ -115,6 +123,24 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
   </section>
 
   <main class="grid">
+    <section class="card wide">
+      <h2>Reel type</h2>
+      <div class="opts" id="modeOpts"></div>
+      <p class="note" id="modeNote"></p>
+    </section>
+
+    <section class="card" id="lyricCard">
+      <h2>Lyric grid</h2>
+      <p class="lbl">Background</p>
+      <div class="opts" id="lyBgOpts"></div>
+      <div class="row">
+        <div class="field grow"><span>Word size</span><input type="range" id="lySize" min="60" max="130" step="1"></div>
+        <div class="field" style="width:110px"><span>Words per screen</span><input type="number" id="lyPhrase" min="2" max="12" step="1"></div>
+      </div>
+      <label class="toggles"><input type="checkbox" id="lyGlow"> soft glow on the words</label>
+      <p class="note">Song reel with no video? Add the song under Music; the reel runs as long as the song. Pictures show in the band, each one until the next starts.</p>
+    </section>
+
     <section class="card">
       <h2>Your clip</h2>
       <p class="lbl">Video</p>
@@ -132,7 +158,7 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="hookCard">
       <h2>Hook</h2>
       <div class="field"><span>Hook text (new line = second line)</span><textarea id="hookText" rows="2" style="min-height:58px"></textarea></div>
       <div class="field"><span>Small line under it (optional)</span><input type="text" id="hookSub"></div>
@@ -151,7 +177,7 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="subCard">
       <h2>Subtitles</h2>
       <p class="lbl">Font</p>
       <div class="opts" id="subFonts"></div>
@@ -168,8 +194,8 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
     </section>
 
     <section class="card">
-      <h2>What you say</h2>
-      <p class="note">One caption per line: start time, then the words. Wrap a word in *stars* to make it pop.</p>
+      <h2 id="textTitle">What you say</h2>
+      <p class="note" id="textNote">One caption per line: start time, then the words. Wrap a word in *stars* to make it pop.</p>
       <textarea id="subText" rows="8" spellcheck="false"></textarea>
       <div class="row">
         <button class="btn small" id="spreadBtn">Time it automatically</button>
@@ -181,7 +207,7 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
         <button class="btn primary tapbig" id="tapHit">Tap (or press space) when each caption starts</button>
         <p class="note" id="tapInfo"></p>
       </div>
-      <p class="note">“Time it automatically” takes plain text (no times), splits it into captions and spreads them across the clip.</p>
+      <p class="note" id="textHelp">“Time it automatically” takes plain text (no times), splits it into captions and spreads them across the clip.</p>
     </section>
 
     <section class="card">
@@ -191,6 +217,26 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
       <div class="row">
         <div class="field grow"><span>SFX volume</span><input type="range" id="sfxVol" min="0" max="1" step="0.01"></div>
         <button class="btn small" id="sfxTry">Hear it</button>
+      </div>
+      <div class="editor">
+        <div class="field"><span>On *emphasis* words</span><select id="sfxEmph" class="sfxsel"></select></div>
+        <div class="field"><span>On full-screen pictures</span><select id="sfxFull" class="sfxsel"></select></div>
+        <div class="field"><span>On each lyric word</span><select id="sfxWord" class="sfxsel"></select></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Extra sounds</h2>
+      <p class="note">Drop any sound anywhere on the reel. Move the playhead, pick a sound, add it. Stack as many as you like.</p>
+      <div class="row">
+        <select id="evKind" class="sfxsel" style="flex:1;min-width:140px" aria-label="Sound to add"></select>
+        <button class="btn small primary" id="evAdd">Add at playhead</button>
+      </div>
+      <div class="evlist" id="evList"></div>
+      <div class="row">
+        <label class="btn small" for="sfxUp">Add your own sounds</label>
+        <input type="file" id="sfxUp" accept="audio/*" multiple hidden>
+        <span class="note" id="sfxUpNote"></span>
       </div>
     </section>
 
@@ -204,6 +250,18 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
       <p class="note" id="musName">No track yet. Keep it low; it dips under your voice.</p>
       <div class="field"><span>Volume</span><input type="range" id="musVol" min="0" max="1" step="0.01"></div>
       <label class="toggles"><input type="checkbox" id="musDuck"> ducks under the voice</label>
+    </section>
+
+    <section class="card wide">
+      <h2>From my Pinterest</h2>
+      <p class="note" id="pinNote">Tap a pin to drop it into the reel at the playhead.</p>
+      <div class="pins" id="pinGrid"></div>
+      <div class="row">
+        <input type="text" id="pinUrl" placeholder="Paste a Pinterest image link (right-click a pin, Copy image address)" style="flex:1;min-width:200px" aria-label="Image link">
+        <button class="btn small" id="pinAdd">Add link</button>
+        <a class="btn small" id="pinBoard" href="https://in.pinterest.com/tripathiadityap/talditalk-image-repo/" target="_blank" rel="noopener">Open the board</a>
+      </div>
+      <p class="note">Tip: you can also drag an image straight from your Pinterest tab onto the preview.</p>
     </section>
 
     <section class="card wide">
@@ -223,7 +281,7 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="extrasCard">
       <h2>Extras</h2>
       <label class="toggles"><input type="checkbox" id="xFollow"> follow nudges</label>
       <div class="field"><span>Follow text</span><input type="text" id="xFollowText"></div>
@@ -277,14 +335,23 @@ const SUB_COLORS = ["#F4F83A","#FFFFFF","#F3EFA0","#9BE7FF","#F2B8C6"];
 const LOOKS = {film:["Film","warm, faded"],clean:["Clean","as shot"],warm:["Warm night","amber"],bw:["Black & white","moody"]};
 const SUB_POS = {mid:["On the face","middle",1000],low:["Lower","above the caption bar",1380],high:["Up top","under the hook",620]};
 const SFX = {double:["Double click","house choice"],single:["Single click",""],pop:["Soft pop",""],whoosh:["Whoosh","for cards"],slap:["Sticker slap",""],shutter:["Camera shutter",""],none:["No sound",""]};
+const MORE_SFX = {swoosh:"Light swoosh", riser:"Riser", boom:"Bass boom", ding:"Ding", type:"Typewriter", glitch:"Glitch"};
+const customSfx = {};   // "u:name" -> {name, buf}
+let sfxEvents = [], evId = 1;
+function sfxChoices(){ const o=[["none","No sound"]]; for (const [k,[n]] of Object.entries(SFX)) if (k!=="none") o.push([k,n]); for (const [k,n] of Object.entries(MORE_SFX)) o.push([k,n]); for (const [k,v] of Object.entries(customSfx)) o.push([k,"★ "+v.name]); return o; }
 
 /* ---------- state ---------- */
+const MODES = {talk:["Talking head","house style: film look, hook, yellow subtitles"], lyric:["Lyric grid","text-only songs and voice-overs"]};
+const LY_BG = {band:["Film band","16:9 band on black, teal film"], full:["Full pictures","pictures fill the frame"], black:["Black","plain"], white:["White","black words, no glow"]};
 const DEFAULTS = {
+  mode:"talk",
+  ly:{bg:"band", size:92, phrase:5, glow:true},
+  lyricText:"0:00.3 nobody\n0:00.7 talks\n0:01.1 about\n0:01.5 the\n0:01.9 quiet|part\n0:03.0 /\n0:03.1 the\n0:03.4 cuts\n0:03.8 you\n0:04.2 never\n0:04.6 post\n0:05.8 /\n0:05.9 every\n0:06.3 frame\n0:06.8 you\n0:07.1 throw\n0:07.5 away\n0:08.7 /\n0:08.8 makes\n0:09.2 the\n0:09.5 one\n0:09.9 you\n0:10.3 keep\n0:13.8 /",
   look:"film", grain:.5, topFade:false,
   hook:{text:"nobody's saying it,\nso I will", sub:"[about editing]", font:"helv", color:"#FFFFFF", size:80, y:900, dur:3.5},
   sub:{font:"helv", color:"#F4F83A", emph:"#FFFFFF", pos:"low", size:66, words:3},
   subText:"0:00.4 nobody's saying it\n0:01.6 so I will\n0:03.0 editing is the\n0:04.0 *real* skill\n0:05.2 not the camera\n0:06.4 not the gear\n0:07.6 it's the cuts\n0:08.8 you *keep*\n0:10.0 and the ones\n0:11.0 you *kill*\n0:12.2 follow for more\n0:13.6 -",
-  sfx:{kind:"double", vol:.6},
+  sfx:{kind:"double", vol:.6, emph:"pop", full:"whoosh", word:"none"},
   music:{vol:.25, duck:true},
   x:{follow:true, followText:"+ Follow @talkaditalk", series:true, seriesText:"Part of the privileged yapping series"},
   t:{sfx:true, music:true, zoom:true, glow:false, safe:false}
@@ -306,8 +373,9 @@ const ease=t=>1-Math.pow(1-clamp(t,0,1),3);
 const back=t=>{t=clamp(t,0,1);const c=1.7;return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2);};
 const fmt=t=>{t=Math.max(0,t||0);const m=Math.floor(t/60);return m+":"+(t%60).toFixed(1).padStart(4,"0");};
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
-const dur=()=>hasVideo?(vid.duration||0):DEMO_DUR;
-const now=()=>hasVideo?vid.currentTime:demoT;
+const lyricSong=()=>!hasVideo && S.mode==="lyric" && !!mus.src && mus.duration>0;
+const dur=()=>hasVideo?(vid.duration||0):(lyricSong()?mus.duration:DEMO_DUR);
+const now=()=>hasVideo?vid.currentTime:(lyricSong()?mus.currentTime:demoT);
 function fontStr(f,size,bold){return `${f.it?"italic ":""}${bold||f.w} ${size}px ${f.css}`;}
 
 /* ---------- subtitles ---------- */
@@ -334,7 +402,22 @@ function srtToText(srt){
   let s=""; out.forEach((c,i)=>{ s+=fmt(c.t0)+" "+c.text+"\n"; if(!out[i+1]||out[i+1].t0-c.t1>0.3) s+=fmt(c.t1)+" -\n"; });
   return s.trim();
 }
-function refreshSubs(){ subs=parseSubs(S.subText); }
+let phrases=[];
+function parseLyrics(text){
+  const re=/^\s*(?:(\d+):)?(\d+(?:\.\d+)?)\s+(.*)$/; const items=[];
+  for (const line of text.split("\n")){ const m=line.match(re); if(!m) continue; items.push({t:(+(m[1]||0))*60 + +m[2], text:m[3].trim()}); }
+  items.sort((a,b)=>a.t-b.t);
+  const out=[]; let cur=null;
+  for (const it of items){
+    if (it.text==="/"||it.text==="-"){ if(cur){ cur.t1=it.t; out.push(cur); cur=null; } continue; }
+    if (!cur) cur={t0:it.t,t1:null,words:[]};
+    for (const w of it.text.split(/\s+/)) w.split("|").forEach((part,i,arr)=>{ if(part) cur.words.push({t:it.t,text:part.toLowerCase(),split:arr.length>1&&i<arr.length-1}); });
+  }
+  if (cur){ cur.t1=Infinity; out.push(cur); }
+  return out;
+}
+function refreshSubs(){ subs=parseSubs(S.subText); phrases=parseLyrics(S.lyricText); }
+const textKey=()=>S.mode==="lyric"?"lyricText":"subText";
 
 /* ---------- sample assets ---------- */
 function makeCard(w,h,bg,fg,text,font,extra){
@@ -347,7 +430,7 @@ function makeCard(w,h,bg,fg,text,font,extra){
 }
 function samplePics(){
   return [
-    {img:makeCard(420,520,"#D9CBB0","#3B2E22","MIND","italic 700 120px 'Bodoni Moda',serif",(g,w,h)=>{g.strokeStyle="#3B2E22";g.lineWidth=3;g.strokeRect(24,24,w-48,h-48);}), t0:3.0, dur:2.4, mode:"card", anim:"pop", x:330, y:640, w:330, rot:-4},
+    {img:makeCard(420,520,"#D9CBB0","#3B2E22","MIND","italic 700 120px 'Bodoni Moda',serif",(g,w,h)=>{g.strokeStyle="#3B2E22";g.lineWidth=3;g.strokeRect(24,24,w-48,h-48);}), t0:3.0, dur:2.4, mode:"card", anim:"pop", x:320, y:560, w:290, rot:-4},
     {img:makeCard(480,360,"#F4F1EA","#1E1C19","editing","italic 400 110px 'Instrument Serif',serif"), t0:5.4, dur:2.2, mode:"card", anim:"slide", x:760, y:700, w:340, rot:5},
     {img:makeCard(540,960,"#141414","#F4F83A","CUT.","400 200px Anton,Impact,sans-serif",(g,w,h)=>{g.fillStyle="#2a2a2a";for(let i=0;i<8;i++)g.fillRect(0,i*130+30,w,4);}), t0:8.6, dur:1.6, mode:"full", anim:"fade", x:540, y:960, w:600, rot:0}
   ].map(p=>({id:picId++, src:p.img.src, sfx:"default", ...p}));
@@ -373,8 +456,16 @@ function burst(t,len,type,freq,q,peak,decay){
   const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(peak,t+.003); g.gain.exponentialRampToValueAtTime(.0008,t+decay);
   s.connect(f); f.connect(g); g.connect(sfxGain); s.start(t); s.stop(t+len); return f;
 }
+function tone(t,type,f0,f1,len,peak){ const o=AC.createOscillator(), g=AC.createGain(); o.type=type; o.frequency.setValueAtTime(f0,t); if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+len); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(peak,t+.006); g.gain.exponentialRampToValueAtTime(.0008,t+len); o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+len+.02); }
 function playSfx(kind){
-  if (!AC || kind==="none") return; const t=AC.currentTime+.01; sfxGain.gain.value=S.sfx.vol;
+  if (!AC || !kind || kind==="none") return; const t=AC.currentTime+.01; sfxGain.gain.value=S.sfx.vol;
+  if (kind.startsWith("u:")){ const c=customSfx[kind]; if(!c) return; const s=AC.createBufferSource(); s.buffer=c.buf; s.connect(sfxGain); s.start(t); return; }
+  if (kind==="swoosh"){ const s=AC.createBufferSource(); s.buffer=noiseBuf(.3); const f=AC.createBiquadFilter(); f.type="highpass"; f.frequency.setValueAtTime(800,t); f.frequency.exponentialRampToValueAtTime(5000,t+.25); const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.4,t+.08); g.gain.exponentialRampToValueAtTime(.001,t+.28); s.connect(f); f.connect(g); g.connect(sfxGain); s.start(t); s.stop(t+.3); return; }
+  if (kind==="riser"){ const s=AC.createBufferSource(); s.buffer=noiseBuf(1.3); const f=AC.createBiquadFilter(); f.type="bandpass"; f.Q.value=3; f.frequency.setValueAtTime(300,t); f.frequency.exponentialRampToValueAtTime(6000,t+1.2); const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.5,t+1.15); g.gain.linearRampToValueAtTime(0,t+1.25); s.connect(f); f.connect(g); g.connect(sfxGain); s.start(t); s.stop(t+1.3); tone(t,"sawtooth",120,900,1.2,.06); return; }
+  if (kind==="boom"){ tone(t,"sine",110,38,.9,1); burst(t,.08,"lowpass",300,.7,.6,.07); return; }
+  if (kind==="ding"){ tone(t,"sine",1320,0,.9,.35); tone(t,"sine",2640,0,.5,.12); return; }
+  if (kind==="type"){ for (let i=0;i<5;i++) burst(t+i*.07+Math.random()*.02,.03,"bandpass",2400+Math.random()*900,3,.7,.025); return; }
+  if (kind==="glitch"){ for (let i=0;i<6;i++){ tone(t+i*.035,"square",200+Math.random()*1800,0,.03,.12); } burst(t,.2,"highpass",4000,.7,.25,.18); return; }
   if (kind==="single"||kind==="double"){ burst(t,.04,"highpass",2500,.7,.9,.03); burst(t,.04,"bandpass",1200,2,.5,.02); if(kind==="double"){ burst(t+.09,.04,"highpass",2500,.7,.8,.03); burst(t+.09,.04,"bandpass",1200,2,.45,.02);} }
   else if (kind==="pop"){ const o=AC.createOscillator(), g=AC.createGain(); o.type="sine"; o.frequency.setValueAtTime(700,t); o.frequency.exponentialRampToValueAtTime(180,t+.09); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.7,t+.005); g.gain.exponentialRampToValueAtTime(.001,t+.12); o.connect(g); g.connect(sfxGain); o.start(t); o.stop(t+.15); }
   else if (kind==="whoosh"){ const s=AC.createBufferSource(); s.buffer=noiseBuf(.5); const f=AC.createBiquadFilter(); f.type="bandpass"; f.Q.value=1.2; f.frequency.setValueAtTime(350,t); f.frequency.exponentialRampToValueAtTime(2600,t+.22); f.frequency.exponentialRampToValueAtTime(700,t+.45); const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.55,t+.18); g.gain.exponentialRampToValueAtTime(.001,t+.48); s.connect(f); f.connect(g); g.connect(sfxGain); s.start(t); s.stop(t+.5); }
@@ -384,8 +475,8 @@ function playSfx(kind){
 function duckTick(){
   if (!AC || !musicGain) return;
   let rms=0; if (hasVideo && analyser){ analyser.getFloatTimeDomainData(abuf); for (const v of abuf) rms+=v*v; rms=Math.sqrt(rms/abuf.length); }
-  const on = S.t.music && mus.src && playing;
-  const speaking = rms>0.02;
+  const on = (S.t.music || lyricSong()) && mus.src && playing;
+  const speaking = rms>0.02 && !lyricSong();
   const target = on ? S.music.vol*(S.music.duck && speaking ? .3 : 1) : 0;
   musicGain.gain.setTargetAtTime(target, AC.currentTime, speaking ? .05 : .45);
 }
@@ -396,11 +487,15 @@ async function play(){
   if (now() >= dur()-0.05) seek(0);
   playing = true; $("playBtn").textContent="❚❚ Pause";
   if (hasVideo){ try{ await vid.play(); }catch(e){ playing=false; $("playBtn").textContent="▶ Play"; return; } }
+  mus.loop=!lyricSong();
+  if (lyricSong()){ try{ await mus.play(); }catch(e){ playing=false; $("playBtn").textContent="▶ Play"; } return; }
   if (mus.src && S.t.music){ syncMusic(); mus.play().catch(()=>{}); }
 }
 function pause(){ playing=false; $("playBtn").textContent="▶ Play"; if (hasVideo) vid.pause(); mus.pause(); }
-function seek(t){ t=clamp(t,0,dur()); if (hasVideo) vid.currentTime=t; else demoT=t; lastT=t; syncMusic(); }
-function syncMusic(){ if (mus.src && mus.duration) mus.currentTime = now() % mus.duration; }
+function seek(t){ t=clamp(t,0,dur()); if (hasVideo) vid.currentTime=t; else if (lyricSong()) mus.currentTime=t; else demoT=t; lastT=t; syncMusic(); }
+function syncMusic(){ if (lyricSong()) return; if (mus.src && mus.duration) mus.currentTime = now() % mus.duration; }
+mus.addEventListener("ended", ()=>{ if (lyricSong() && playing) ended(); });
+mus.addEventListener("loadedmetadata", ()=>{ if (lyricSong()) $("scrub").max=mus.duration; });
 function ended(){ pause(); if (exporting) finishExport(); }
 vid.addEventListener("ended", ended);
 vid.addEventListener("loadedmetadata", ()=>{ $("scrub").max=vid.duration; refreshSubs(); });
@@ -525,7 +620,75 @@ function drawSafe(){
   ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.setLineDash([12,10]); ctx.lineWidth=2; ctx.strokeRect(40,250,1000,1250);
   ctx.fillStyle="#fff"; ctx.font="600 26px Inter,sans-serif"; ctx.fillText("Instagram covers this",60,140); ctx.fillText("caption, username, audio",60,1700); ctx.restore();
 }
+/* ---------- lyric grid ---------- */
+const BAND={y:652,h:608};
+const tealFilter="saturate(.78) contrast(1.08) brightness(.8) blur(.7px)";
+function currentPic(t){ let best=null; for (const p of pics) if (p.img.complete && p.t0<=t && (!best||p.t0>best.t0)) best=p; return best; }
+function drawInRect(src,sw,sh,x,y,w,h,push){
+  const s=Math.max(w/sw,h/sh)*push; const dw=sw*s, dh=sh*s;
+  ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip(); ctx.drawImage(src,x+(w-dw)/2,y+(h-dh)/2,dw,dh); ctx.restore();
+}
+function tealWash(x,y,w,h){
+  ctx.save(); ctx.globalCompositeOperation="lighten"; ctx.globalAlpha=.85; ctx.fillStyle="rgb(8,22,30)"; ctx.fillRect(x,y,w,h);
+  ctx.globalCompositeOperation="multiply"; ctx.globalAlpha=.35; ctx.fillStyle="#3f8a96"; ctx.fillRect(x,y,w,h);
+  ctx.globalCompositeOperation="soft-light"; ctx.globalAlpha=.2; ctx.fillStyle="#ffd9b0"; ctx.fillRect(x,y,w,h); ctx.restore();
+}
+function drawLyricBg(t){
+  const bg=S.ly.bg;
+  if (bg==="white"){ ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,H); return; }
+  ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+  if (bg==="black") return;
+  const r = bg==="band" ? {x:0,y:BAND.y,w:W,h:BAND.h} : {x:0,y:0,w:W,h:H};
+  ctx.save(); ctx.filter=tealFilter;
+  if (hasVideo && vid.videoWidth) drawInRect(vid,vid.videoWidth,vid.videoHeight,r.x,r.y,r.w,r.h,1.02);
+  else { const p=currentPic(t); if (p){ const k=clamp((t-p.t0)/6,0,1); drawInRect(p.img,p.img.naturalWidth,p.img.naturalHeight,r.x,r.y,r.w,r.h,1.02+0.06*k); } }
+  ctx.restore();
+  tealWash(r.x,r.y,r.w,r.h);
+  if (bg==="band"){ ctx.fillStyle="rgba(0,0,0,.12)"; ctx.fillRect(r.x,r.y,r.w,r.h); }
+}
+const COLS=[.23,.375,.51,.68].map(c=>c*W);
+function layoutPhrase(ph,size){
+  const f=HOOK_FONTS.helv; ctx.save(); ctx.font=fontStr(f,size,400); const hs=.92;
+  const colGap=COLS[1]-COLS[0]; const cells=[]; let row=0, col=0;
+  for (const w of ph.words){
+    const width=ctx.measureText(w.text).width*hs; let span=Math.max(1,Math.ceil((width+18)/colGap));
+    if (span>4) span=4;
+    if (col+span>4){ row++; col=0; }
+    cells.push({w,row,col,width}); col+=span; if (w.split && col>=4){ row++; col=0; }
+  }
+  ctx.restore();
+  const rows=(cells.length?cells[cells.length-1].row:0)+1;
+  return {cells,rows};
+}
+function drawLyrics(t){
+  const ph=phrases.find(p=>t>=p.t0 && t<p.t1); if (!ph) return;
+  const size=S.ly.size; const L=layoutPhrase(ph,size);
+  const rowH = L.rows>=4 ? size*1.22 : size*1.39;
+  const cy = S.ly.bg==="band" ? BAND.y+BAND.h/2 : H/2;
+  const top = cy-(L.rows-1)*rowH/2 + size*.34;
+  const white=S.ly.bg==="white"; const isLast=ph===phrases[phrases.length-1];
+  let fadeOut=1; if (isLast){ const end=Math.min(ph.t1,dur()); if (isFinite(end)) fadeOut=clamp((end-t)/0.6,0,1); }
+  const f=HOOK_FONTS.helv;
+  for (const c of L.cells){
+    if (t<c.w.t) continue;
+    const a=clamp((t-c.w.t)/0.066,0,1)*fadeOut;
+    ctx.save(); ctx.globalAlpha=a; ctx.font=fontStr(f,size,400); ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+    ctx.translate(COLS[c.col], top+c.row*rowH); ctx.scale(.92,1);
+    if (!white && S.ly.glow){ ctx.shadowColor="rgba(255,255,255,.45)"; ctx.shadowBlur=18; }
+    ctx.fillStyle=white?"#111":"#fff"; ctx.fillText(c.w.text,0,0); ctx.restore();
+  }
+}
+function renderLyric(){
+  const t=now(); hitRects=[];
+  ctx.setTransform(SC,0,0,SC,0,0);
+  drawLyricBg(t);
+  drawLyrics(t);
+  if (S.ly.bg!=="white") drawGrain(t);
+  if (S.t.safe && !exporting) drawSafe();
+}
+
 function render(){
+  if (S.mode==="lyric") return renderLyric();
   const t=now(); hitRects=[];
   ctx.setTransform(SC,0,0,SC,0,0); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
   const z=zoomAt(t);
@@ -549,10 +712,15 @@ function render(){
 let lastT=0, lastFrame=performance.now();
 function loop(ts){
   const dt=Math.min(.1,(ts-lastFrame)/1000); lastFrame=ts;
-  if (playing && !hasVideo){ demoT+=dt; if (demoT>=DEMO_DUR){ demoT=DEMO_DUR; ended(); } }
+  if (playing && !hasVideo && !lyricSong()){ demoT+=dt; if (demoT>=DEMO_DUR){ demoT=DEMO_DUR; ended(); } }
   const t=now();
   if (playing && S.t.sfx && t>lastT && t-lastT<0.6){
-    for (const p of pics) if (p.t0>lastT && p.t0<=t){ const k=p.sfx==="default"?(p.mode==="full"?"whoosh":S.sfx.kind):p.sfx; playSfx(k); }
+    const crossed=x=>x>lastT && x<=t;
+    let auto=false; const fire=k=>{ if (!k||k==="none"||auto) return; auto=true; playSfx(k); };
+    for (const p of pics) if (crossed(p.t0)) fire(p.sfx==="default"?(S.mode==="lyric"?"none":p.mode==="full"?S.sfx.full:S.sfx.kind):p.sfx);
+    if (S.mode==="talk") for (const s of subs) if (crossed(s.t0) && s.text.includes("*")) fire(S.sfx.emph);
+    if (S.mode==="lyric") for (const ph of phrases) for (const w of ph.words) if (crossed(w.t)) fire(S.sfx.word);
+    for (const e of sfxEvents) if (crossed(e.t)) playSfx(e.kind);
   }
   lastT=t; duckTick(); render();
   if (exporting){ $("expBar").style.width=(100*t/dur()).toFixed(1)+"%"; }
@@ -596,15 +764,104 @@ function buildUI(){
   const ec=$("emphColor"); ec.value=S.sub.emph; ec.oninput=()=>{ S.sub.emph=ec.value; save(); };
   optButtons($("subPos"),Object.entries(SUB_POS).map(([k,v])=>[k,[v[0],v[1]]]),S.sub.pos,k=>S.sub.pos=k);
   bindRange("subSize",()=>S.sub.size,v=>S.sub.size=v); bindText("subWords",()=>S.sub.words,v=>S.sub.words=clamp(+v||3,1,6));
-  const st=$("subText"); st.value=S.subText; st.oninput=()=>{ S.subText=st.value; refreshSubs(); save(); };
+  const st=$("subText"); st.value=S[textKey()]; st.oninput=()=>{ S[textKey()]=st.value; refreshSubs(); save(); };
+  optButtons($("modeOpts"),Object.entries(MODES),S.mode,k=>{ S.mode=k; applyMode(); });
+  optButtons($("lyBgOpts"),Object.entries(LY_BG),S.ly.bg,k=>S.ly.bg=k);
+  bindRange("lySize",()=>S.ly.size,v=>S.ly.size=v); bindText("lyPhrase",()=>S.ly.phrase,v=>S.ly.phrase=clamp(+v||5,2,12));
+  bindCheck("lyGlow",()=>S.ly.glow,v=>S.ly.glow=v);
+  applyMode();
   optButtons($("sfxOpts"),Object.entries(SFX),S.sfx.kind,k=>{ S.sfx.kind=k; ensureAudio(); playSfx(k); });
   bindRange("sfxVol",()=>S.sfx.vol,v=>S.sfx.vol=v);
+  fillSfxSelects();
+  [["sfxEmph","emph"],["sfxFull","full"],["sfxWord","word"]].forEach(([id,k])=>{ $(id).onchange=()=>{ S.sfx[k]=$(id).value; ensureAudio(); playSfx(S.sfx[k]); save(); }; });
   bindRange("musVol",()=>S.music.vol,v=>S.music.vol=v); bindCheck("musDuck",()=>S.music.duck,v=>S.music.duck=v);
   bindCheck("xFollow",()=>S.x.follow,v=>S.x.follow=v); bindText("xFollowText",()=>S.x.followText,v=>S.x.followText=v);
   bindCheck("xSeries",()=>S.x.series,v=>S.x.series=v); bindText("xSeriesText",()=>S.x.seriesText,v=>S.x.seriesText=v);
   bindCheck("tSfx",()=>S.t.sfx,v=>S.t.sfx=v); bindCheck("tMusic",()=>S.t.music,v=>S.t.music=v);
   bindCheck("tZoom",()=>S.t.zoom,v=>S.t.zoom=v); bindCheck("tGlow",()=>S.t.glow,v=>S.t.glow=v); bindCheck("tSafe",()=>S.t.safe,v=>S.t.safe=v);
   renderPicList();
+}
+
+function applyMode(){
+  const ly=S.mode==="lyric";
+  ["hookCard","subCard","extrasCard"].forEach(id=>$(id).hidden=ly); $("lyricCard").hidden=!ly;
+  $("modeNote").textContent= ly
+    ? "Words pop into a loose grid on their beat and stay until the screen clears. No hook, subtitles, handle or follow nudge. Use it for text-only song reels and voice-overs; talking-head reels stay in the house style."
+    : "Your normal edit: film look, Helvetica hook, yellow subtitles, picture cards, punch-ins and follow nudges.";
+  $("textTitle").textContent= ly ? "Lyrics" : "What you say";
+  $("textNote").textContent= ly
+    ? "One word (or a few) per line with the time it lands. A line with just / clears the screen. Write con|scious to split a word across two columns."
+    : "One caption per line: start time, then the words. Wrap a word in *stars* to make it pop.";
+  $("textHelp").textContent= ly
+    ? "“Time it automatically” spreads plain lyrics over the reel and clears the screen every few words. “Tap along” is best for songs: tap on each word as it's sung."
+    : "“Time it automatically” takes plain text (no times), splits it into captions and spreads them across the clip.";
+  $("subText").value=S[textKey()]; refreshSubs();
+  $("scrub").max=dur()||14; save();
+}
+/* ---------- sound selects + extra sounds ---------- */
+function fillSfxSelects(){
+  const ch=sfxChoices();
+  document.querySelectorAll("select.sfxsel").forEach(sel=>{ const v=sel.value; sel.innerHTML=""; ch.forEach(([k,n])=>{ const o=document.createElement("option"); o.value=k; o.textContent=n; sel.appendChild(o); }); sel.value=v||"none"; });
+  $("sfxEmph").value=S.sfx.emph; $("sfxFull").value=S.sfx.full; $("sfxWord").value=S.sfx.word; if(!$("evKind").value||$("evKind").value==="none") $("evKind").value="whoosh";
+  const ps=$("pSfx"); const pv=ps.value||"default"; ps.innerHTML='<option value="default">Default</option>'; ch.forEach(([k,n])=>{ const o=document.createElement("option"); o.value=k; o.textContent=n; ps.appendChild(o); }); ps.value=pv;
+  renderEvents();
+}
+function renderEvents(){
+  const el=$("evList"); el.innerHTML=""; const ch=sfxChoices();
+  if (!sfxEvents.length){ const p=document.createElement("p"); p.className="note"; p.textContent="No extra sounds yet."; el.appendChild(p); return; }
+  sfxEvents.sort((a,b)=>a.t-b.t).forEach(e=>{
+    const row=document.createElement("div"); row.className="ev";
+    const ti=document.createElement("input"); ti.type="number"; ti.step="0.1"; ti.min="0"; ti.value=e.t.toFixed(1); ti.setAttribute("aria-label","Time"); ti.onchange=()=>{ e.t=Math.max(0,+ti.value||0); renderEvents(); };
+    const sel=document.createElement("select"); ch.forEach(([k,n])=>{ const o=document.createElement("option"); o.value=k; o.textContent=n; sel.appendChild(o); }); sel.value=e.kind; sel.setAttribute("aria-label","Sound"); sel.onchange=()=>{ e.kind=sel.value; ensureAudio(); playSfx(e.kind); };
+    const hear=document.createElement("button"); hear.className="btn small"; hear.textContent="▶"; hear.setAttribute("aria-label","Hear"); hear.onclick=()=>{ ensureAudio(); playSfx(e.kind); };
+    const del=document.createElement("button"); del.className="btn small danger"; del.textContent="✕"; del.setAttribute("aria-label","Remove sound"); del.onclick=()=>{ sfxEvents=sfxEvents.filter(x=>x!==e); renderEvents(); };
+    row.append(ti,sel,hear,del); el.appendChild(row);
+  });
+}
+$("evAdd").onclick=()=>{ const k=$("evKind").value; if(k==="none") return; sfxEvents.push({id:evId++,t:+now().toFixed(2),kind:k}); ensureAudio(); playSfx(k); renderEvents(); };
+$("sfxUp").onchange=async e=>{
+  ensureAudio(); let n=0;
+  for (const f of e.target.files){ try{ const buf=await AC.decodeAudioData(await f.arrayBuffer()); const name=f.name.replace(/\.[^.]+$/,"").slice(0,30); customSfx["u:"+name]={name,buf}; n++; }catch(err){} }
+  $("sfxUpNote").textContent = n ? `${n} sound${n>1?"s":""} added (marked ★ in the lists).` : "Couldn't read that file. Try MP3, WAV or M4A.";
+  e.target.value=""; fillSfxSelects();
+};
+
+/* ---------- Pinterest ---------- */
+function addPicFromUrl(url,title){
+  const img=new Image(); img.crossOrigin="anonymous";
+  img.onload=()=>{ const i=pics.length; const p={id:picId++,img,src:url,t0:+Math.min(now(),Math.max(0,dur()-1)).toFixed(1),dur:2,mode:"card",anim:["pop","slide","drop"][i%3],sfx:"default",x:i%2?740:340,y:660,w:340,rot:i%2?4:-4}; pics.push(p); selectPic(p); $("pinNote").textContent=(title?`Added “${title}”`:"Added")+" at "+fmt(p.t0)+"."; };
+  img.onerror=()=>{ $("pinNote").textContent="That picture wouldn't load here. Save it to your device and use “Add pictures” instead."; };
+  img.src=url;
+}
+async function loadPins(){
+  const grid=$("pinGrid");
+  const empty=msg=>{ grid.innerHTML=""; const d=document.createElement("div"); d.className="empty"; d.textContent=msg; grid.appendChild(d); };
+  let list=null;
+  try { const r=await fetch("pinterest.json",{cache:"no-store"}); if (r.ok) list=await r.json(); } catch(e){}
+  if (!Array.isArray(list)) return empty("Your board loads here when the editor runs from GitHub Pages or the repo folder. Until then, paste image links below or open the board.");
+  if (!list.length) return empty("No pins synced yet. The daily “Sync Pinterest” action fills this in, or run it now from the repo's Actions tab.");
+  grid.innerHTML="";
+  list.forEach(pin=>{ const b=document.createElement("button"); b.type="button"; b.title=pin.title||""; b.setAttribute("aria-label","Add pin "+(pin.title||pin.n||""));
+    const im=document.createElement("img"); im.loading="lazy"; im.alt=""; im.src=pin.thumb||pin.url; b.appendChild(im); b.onclick=()=>addPicFromUrl(pin.url,pin.title); grid.appendChild(b); });
+  $("pinNote").textContent=`${list.length} pins from your board. Tap one to drop it into the reel at the playhead.`;
+}
+$("pinAdd").onclick=()=>{ const u=$("pinUrl").value.trim(); if (/^https?:\/\//.test(u)){ addPicFromUrl(u); $("pinUrl").value=""; } else $("pinNote").textContent="Paste a full image link that starts with https://"; };
+
+/* lyric items: words with phrase breaks */
+function lyricItems(text){
+  const lines=text.split("\n").map(l=>l.replace(/^\s*(?:\d+:)?\d+(?:\.\d+)?\s+/,"").trim()).filter(Boolean);
+  const items=[]; let n=0;
+  for (const line of lines){
+    if (line==="/"||line==="-"){ if (n){ items.push({brk:true}); n=0; } continue; }
+    for (const w of line.split(/\s+/)){ items.push({text:w}); n++;
+      if (n>=S.ly.phrase || (/[.!?,;]$/.test(w) && n>=2)){ items.push({brk:true}); n=0; } }
+  }
+  if (items.length && !items[items.length-1].brk) items.push({brk:true});
+  return items;
+}
+function lyricItemsToText(items,times,endT){
+  let s=""; items.forEach((it,i)=>{ if (it.brk){ const nxt=items.slice(i+1).findIndex(x=>!x.brk); const t = nxt<0 ? endT : times[i+1+nxt]-0.08; s+=fmt(Math.max(t,(times[i-1]||0)+0.1))+" /\n"; } else s+=fmt(times[i])+" "+it.text.replace(/[.,;]$/,"")+"\n"; });
+  return s.trim();
 }
 
 /* ---------- pictures UI ---------- */
@@ -652,7 +909,8 @@ $("vidIn").onchange=e=>loadVideo(e.target.files[0]);
 $("sampleBtn").onclick=()=>{ pause(); hasVideo=false; vid.removeAttribute("src"); vid.load(); demoT=0; $("scrub").max=DEMO_DUR; $("dropHint").hidden=false; $("clipInfo").textContent="Showing a built-in sample so you can try every setting first."; if(!pics.length){ pics=samplePics(); renderPicList(); } };
 const phone=$("phone");
 phone.addEventListener("dragover",e=>{ e.preventDefault(); });
-phone.addEventListener("drop",e=>{ e.preventDefault(); const f=e.dataTransfer.files[0]; if (f && f.type.startsWith("video")) loadVideo(f); else if (f && f.type.startsWith("image")){ const dt=new DataTransfer(); [...e.dataTransfer.files].forEach(x=>dt.items.add(x)); $("picIn").files=dt.files; $("picIn").onchange({target:$("picIn")}); } });
+phone.addEventListener("drop",e=>{ e.preventDefault(); const f=e.dataTransfer.files[0];
+  if (!f){ const u=(e.dataTransfer.getData("text/uri-list")||e.dataTransfer.getData("text/plain")||"").split("\n")[0].trim(); if (/^https?:\/\//.test(u)) addPicFromUrl(u); return; } if (f && f.type.startsWith("video")) loadVideo(f); else if (f && f.type.startsWith("image")){ const dt=new DataTransfer(); [...e.dataTransfer.files].forEach(x=>dt.items.add(x)); $("picIn").files=dt.files; $("picIn").onchange({target:$("picIn")}); } });
 $("musIn").onchange=e=>{ const f=e.target.files[0]; if(!f) return; mus.src=URL.createObjectURL(f); $("musName").textContent=f.name; $("musClear").hidden=false; if (playing && S.t.music){ ensureAudio(); mus.addEventListener("canplay",()=>{ syncMusic(); mus.play().catch(()=>{}); },{once:true}); } e.target.value=""; };
 $("musClear").onclick=()=>{ mus.pause(); mus.removeAttribute("src"); mus.load(); $("musName").textContent="No track yet. Keep it low; it dips under your voice."; $("musClear").hidden=true; };
 
@@ -665,6 +923,13 @@ $("sfxTry").onclick=()=>{ ensureAudio(); playSfx(S.sfx.kind==="none"?"whoosh":S.
 
 /* ---------- caption timing tools ---------- */
 $("spreadBtn").onclick=()=>{
+  if (S.mode==="lyric"){
+    const items=lyricItems($("subText").value); const words=items.filter(i=>!i.brk).length; if(!words) return;
+    const D=dur(), start=0.2, end=Math.max(start+1,D-0.4); const step=(end-start)/words; let t=start; const times=[];
+    items.forEach(it=>{ if(it.brk){ times.push(null); t+=step*0.6; } else { times.push(t); t+=step; } });
+    const scale=(end-start)/(t-start); times.forEach((x,i)=>{ if(x!==null) times[i]=start+(x-start)*scale; });
+    S.lyricText=lyricItemsToText(items,times,end); $("subText").value=S.lyricText; refreshSubs(); save(); return;
+  }
   const chunks=chunkWords($("subText").value, S.sub.words); if(!chunks.length) return;
   const D=dur(), start=0.3, end=Math.max(start+1,D-0.3); const wc=chunks.map(c=>c.split(" ").length+0.6); const tot=wc.reduce((a,b)=>a+b,0);
   let t=start; const list=chunks.map((c,i)=>{ const s={t0:t,text:c}; t+=(end-start)*wc[i]/tot; return s; });
@@ -672,11 +937,20 @@ $("spreadBtn").onclick=()=>{
 };
 let tap=null;
 $("tapBtn").onclick=()=>{
+  if (S.mode==="lyric"){
+    const items=lyricItems($("subText").value); const chunks=items.filter(i=>!i.brk).map(i=>i.text); if(!chunks.length) return;
+    tap={chunks,i:0,times:[],items}; $("tapPanel").hidden=false; $("tapInfo").textContent=`Next: “${chunks[0]}” (1 of ${chunks.length})`; seek(0); play(); return;
+  }
   const chunks=chunkWords($("subText").value, S.sub.words); if(!chunks.length) return;
   tap={chunks,i:0,times:[]}; $("tapPanel").hidden=false; $("tapInfo").textContent=`Next: “${chunks[0]}” (1 of ${chunks.length})`; seek(0); play();
 };
 function doTap(){
   if(!tap) return; tap.times.push(now()); tap.i++;
+  if (tap.items && tap.i>=tap.chunks.length){
+    let k=0; const times=tap.items.map(it=>it.brk?null:tap.times[k++]);
+    S.lyricText=lyricItemsToText(tap.items,times,Math.min(dur(),now()+1.8)); $("subText").value=S.lyricText; refreshSubs(); save(); tap=null; $("tapPanel").hidden=true; return;
+  }
+  if (tap.items){ $("tapInfo").textContent=`Next: “${tap.chunks[tap.i]}” (${tap.i+1} of ${tap.chunks.length})`; return; }
   const list=tap.chunks.slice(0,tap.i).map((c,k)=>({t0:tap.times[k],text:c}));
   if (tap.i>=tap.chunks.length){ S.subText=subsToText(list)+"\n"+fmt(Math.min(dur(),now()+1.6))+" -"; $("subText").value=S.subText; refreshSubs(); save(); tap=null; $("tapPanel").hidden=true; return; }
   $("tapInfo").textContent=`Next: “${tap.chunks[tap.i]}” (${tap.i+1} of ${tap.chunks.length})`;
@@ -686,7 +960,7 @@ document.addEventListener("keydown",e=>{
   if (e.target.matches("textarea,input[type=text],input[type=number]")) return;
   if (e.code==="Space"){ e.preventDefault(); if (tap) doTap(); else playing?pause():play(); }
 });
-$("srtIn").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; S.subText=srtToText(await f.text()); $("subText").value=S.subText; refreshSubs(); save(); e.target.value=""; };
+$("srtIn").onchange=async e=>{ const f=e.target.files[0]; if(!f) return; S[textKey()]=srtToText(await f.text()); $("subText").value=S[textKey()]; refreshSubs(); save(); e.target.value=""; };
 
 /* ---------- export ---------- */
 let rec=null, chunksRec=[], recMime="", cancelled=false;
@@ -735,7 +1009,7 @@ async function onRecStop(){
 })();
 
 /* ---------- boot ---------- */
-pics=samplePics(); refreshSubs(); buildUI();
+pics=samplePics(); refreshSubs(); buildUI(); loadPins();
 Object.values(HOOK_FONTS).concat(Object.values(SUB_FONTS)).forEach(f=>{ try{ document.fonts.load(fontStr(f,40)); }catch(e){} });
 requestAnimationFrame(loop);
 })();

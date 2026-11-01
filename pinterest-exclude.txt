@@ -1,0 +1,2 @@
+# Pins the editor should never show. One per line: the pin id (from the pin's URL)
+# or its number in pinterest.json. Lines starting with # are ignored.
