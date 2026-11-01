@@ -1,4 +1,4 @@
-# Reel Studio
+# talkaditalk Reel Studio
 
 **Edit Instagram reels in your browser.** Drop in a raw clip, choose the hook, subtitles, look, sound effects, music and pictures, then export a finished 9:16 reel. You don't install anything, make an account or upload your footage anywhere.
 

@@ -3,58 +3,63 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Reel Studio</title>
+<title>talkaditalk Reel Studio</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bodoni+Moda:ital,wght@0,500;1,500&family=Courier+Prime:wght@400;700&family=DM+Sans:wght@500;700&family=DM+Serif+Display:ital@0;1&family=Fraunces:ital,wght@0,500;1,500&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;800&family=Montserrat:wght@700;800&display=swap">
 <style>
-/* Layout: sticky 9:16 phone preview on the left, a wall of setting cards on the right (stacks on phones). */
+/* Layout: sticky 9:16 phone preview on the left, setting cards on the right (stacks on phones).
+   One committed look, taken from the reels themselves: warm film black, grain, film-white Helvetica, lemon subtitle yellow. */
 :root{
-  --paper:#F2EFE8; --card:#FBFAF6; --ink:#1E1C19; --muted:#7A756C; --line:#DDD8CD;
-  --accent:#2F6BEA; --accent-ink:#FFFFFF; --chip:#EEEBE3; --danger:#C2362F;
-  --display:"Instrument Serif","Times New Roman",serif;
-  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --black:#0F0E0C; --card:#181613; --card-2:#201D19; --ink:#F3EFE6; --muted:#958D80; --line:#2C2924;
+  --lemon:#F4F83A; --lemon-ink:#141310; --chip:#25221E; --danger:#FF7A6B;
+  --accent:var(--lemon); --accent-ink:var(--lemon-ink); --paper:var(--card-2);
+  --display:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --body:"Helvetica Neue",Helvetica,Arial,sans-serif;
   --mono:"Courier Prime",ui-monospace,Menlo,monospace;
-  color-scheme:light;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --paper:#171614; --card:#201F1C; --ink:#EEEAE2; --muted:#9C968B; --line:#34312C;
-  --accent:#6E98F5; --accent-ink:#0E1424; --chip:#2A2824; --danger:#EC6A60; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --paper:#171614; --card:#201F1C; --ink:#EEEAE2; --muted:#9C968B; --line:#34312C;
-  --accent:#6E98F5; --accent-ink:#0E1424; --chip:#2A2824; --danger:#EC6A60; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
-body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--body);
+body{background:var(--black);color:var(--ink);font:14px/1.45 var(--body);position:relative;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:1320px;margin:0 auto 14px}
-header h1{font:italic 400 34px/1 var(--display);margin:0;letter-spacing:-.01em}
-header p{margin:0;color:var(--muted);font-size:13px}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:50;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:1320px;margin:0 auto 14px}
+header h1{font:500 44px/0.95 var(--display);margin:0;letter-spacing:-.045em;text-transform:lowercase}
+header h1 em{font-style:normal;color:var(--lemon)}
+.eyebrow{font:600 11px var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.eyebrow a{color:inherit;text-decoration:none}
+.eyebrow a:hover{color:var(--lemon)}
+header p{margin:0;color:var(--muted);font-size:13px;max-width:44ch}
 .wrap{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:22px;max-width:1320px;margin:0 auto;align-items:start}
 .stage{position:sticky;top:max(12px,env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:10px}
-.phone{position:relative;width:100%;aspect-ratio:9/16;max-width:100%;border-radius:18px;overflow:hidden;background:#000;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.phone{position:relative;width:100%;aspect-ratio:9/16;max-width:100%;border-radius:18px;overflow:hidden;background:#000;box-shadow:0 0 0 1px var(--line),0 24px 60px rgba(0,0,0,.55)}
 .phone canvas{width:100%;height:100%;display:block;touch-action:none}
 .drop-hint{position:absolute;inset:auto 10px 10px 10px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:6px 10px;border-radius:8px;text-align:center;pointer-events:none}
 .transport{display:flex;align-items:center;gap:10px}
 .transport .time{font:12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;min-width:86px;text-align:right}
 .transport input{flex:1}
 .toggles{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+input[type=checkbox]{accent-color:var(--lemon)}
 .toggles label{display:flex;align-items:center;gap:5px;cursor:pointer}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;min-width:0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .card.wide{grid-column:1/-1}
-.card h2{font:italic 400 24px/1.05 var(--display);margin:0}
-.lbl{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0}
+.card h2{font:500 23px/1 var(--display);margin:0;letter-spacing:-.035em;text-transform:lowercase}
+.lbl{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
 .opts{display:flex;flex-wrap:wrap;gap:8px}
-.opt{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 11px;cursor:pointer;text-align:left;line-height:1.15;font-size:13px;font-family:inherit}
+.opt{background:var(--card-2);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 11px;cursor:pointer;text-align:left;line-height:1.15;font-size:13px;font-family:inherit}
 .opt small{display:block;font:400 10px var(--body);color:var(--muted);margin-top:2px;font-style:normal;letter-spacing:0}
-.opt.on{border:1.6px solid var(--ink);box-shadow:0 0 0 2px var(--chip) inset}
+.opt.on{border-color:var(--lemon);box-shadow:inset 0 0 0 1px var(--lemon)}
+.opt.on > span{color:var(--lemon)}
+.opt:hover{border-color:#4a453d}
 .opt:focus-visible,.btn:focus-visible,.sw:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sws{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 .sw{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);cursor:pointer;padding:0}
-.sw.on{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--ink)}
+.sw.on{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--lemon)}
 input[type=color]{width:30px;height:28px;border:1px solid var(--line);border-radius:6px;background:none;padding:1px;cursor:pointer}
 input[type=range]{accent-color:var(--accent);width:100%}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -64,7 +69,8 @@ input[type=range]{accent-color:var(--accent);width:100%}
 textarea,input[type=text],input[type=number],select{width:100%;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:13px var(--body)}
 textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
 .btn{background:var(--chip);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:8px 12px;font:500 13px var(--body);cursor:pointer}
-.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary{background:var(--lemon);color:var(--lemon-ink);border-color:var(--lemon);font-weight:600}
+.btn:hover:not(:disabled){filter:brightness(1.08)}
 .btn.danger{color:var(--danger)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.small{padding:5px 9px;font-size:12px}
@@ -74,7 +80,7 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
 .pic{flex:0 0 auto;width:86px;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:4px;background:var(--paper);position:relative}
 .pic img{width:100%;height:96px;object-fit:cover;border-radius:7px;display:block}
 .pic .t{font:11px var(--mono);color:var(--muted);text-align:center;margin-top:3px}
-.pic.on{border:1.6px solid var(--ink)}
+.pic.on{border:1.6px solid var(--lemon)}
 .pic.add{display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--muted);font-size:12px;height:126px;gap:4px}
 .pic.add b{font-size:26px;font-weight:400;line-height:1}
 .pins{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;max-height:330px;overflow-y:auto}
@@ -94,14 +100,22 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
 .out video{width:100%;max-width:260px;border-radius:10px;display:block}
 .status{font-size:12.5px;min-height:18px}
 .tapbig{font-size:16px;padding:14px;width:100%}
+footer.brand{max-width:1320px;margin:34px auto 0;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px 28px;justify-content:space-between;align-items:baseline;color:var(--muted);font-size:12.5px}
+footer.brand b{color:var(--ink);font-weight:500;letter-spacing:-.02em;font-size:15px}
+footer.brand nav{display:flex;flex-wrap:wrap;gap:6px 16px}
+footer.brand a{color:var(--muted);text-decoration:none}
+footer.brand a:hover{color:var(--lemon)}
 @media (max-width:760px){.wrap{grid-template-columns:1fr}.stage{position:static;max-width:380px;margin:0 auto;width:100%}}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Reel Studio</h1>
-  <p>Drop a raw clip, pick the look, export a finished reel. Everything runs in your browser.</p>
+  <div>
+    <p class="eyebrow"><a href="https://www.instagram.com/talkaditalk/" target="_blank" rel="noopener">@talkaditalk</a> · reel studio</p>
+    <h1>edit it like <em>adi</em> does</h1>
+  </div>
+  <p>Raw clip in, finished reel out. Film look, Helvetica hook, yellow subtitles, Pinterest cards. Runs in your browser; your footage never leaves it.</p>
 </header>
 
 <div class="wrap">
@@ -317,6 +331,19 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
     </section>
   </main>
 </div>
+
+<footer class="brand">
+  <div><b>Founday</b> &nbsp;Raw Ambition. Unfiltered Mindset. Creative Agency.</div>
+  <nav aria-label="Founday links">
+    <a href="https://www.instagram.com/talkaditalk/" target="_blank" rel="noopener">@talkaditalk</a>
+    <a href="https://www.instagram.com/foundayofficial/" target="_blank" rel="noopener">@foundayofficial</a>
+    <a href="https://open.spotify.com/show/1DZXqmsDyH2FdJOeBdCoT6" target="_blank" rel="noopener">ThatUnhingedGuy on Spotify</a>
+    <a href="https://www.youtube.com/playlist?list=PLBBt2c2haxM8" target="_blank" rel="noopener">on YouTube</a>
+    <a href="https://practitionerhq.substack.com" target="_blank" rel="noopener">The Practitioner</a>
+    <a href="https://founday-sepia.vercel.app" target="_blank" rel="noopener">founday</a>
+    <a href="https://github.com/tripathiadityap/claudevideoeditor" target="_blank" rel="noopener">source</a>
+  </nav>
+</footer>
 
 <video id="vid" playsinline preload="auto" hidden></video>
 <audio id="mus" preload="auto" loop hidden></audio>
