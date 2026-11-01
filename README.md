@@ -90,6 +90,19 @@ Older browsers without WebGL2 get a simpler filter version of each grade.
 
 Set where the video starts and ends, and cut bad takes out of the middle. The red and black marks on the timeline show what's removed. Preview and export both skip those parts.
 
+## Auto edit
+
+Paste your script (optional) and press **Auto edit**. It:
+
+- **Cuts the dead air:** finds the pauses in your audio and adds them as cuts. Strictness and shortest-pause sliders included. No AI needed.
+- **Times captions to your voice:** on the GitHub Pages version, a small speech model (Whisper tiny, about 40 MB, downloaded once) runs on your own device and times every word. If you pasted your script, your exact spelling is kept. Without the model, for example on the claude.ai link, it lays your script over the parts where you're actually talking.
+- **Picks the key word in each line:** it turns yellow, the camera punches in, and the word pops big on screen (turn this off with **word pops**).
+- **Writes the hook** from your first line.
+- **Places your pictures** on the line whose words match the picture's name, or spreads them across the lines. With no pictures added, it borrows matching pins from your board.
+- **Adds a counting graph** when you say a number like "100K" or "50%".
+
+**Undo auto edit** puts everything back. Right-click the preview and choose **Insert animation here** to drop a graph, steps, route or breakdown cutaway anywhere.
+
 ## Right-click and press-and-hold
 
 - **Right-click the preview** (or **press and hold** it on your phone) for a quick menu. On a picture: edit, show it from the playhead, switch card/full screen, bring to front, duplicate, remove. Anywhere: play/pause, add a picture or sound right there, start/end/cut at the playhead, save a thumbnail.

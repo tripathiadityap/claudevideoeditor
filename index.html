@@ -221,6 +221,7 @@ footer.brand a:hover{color:var(--lemon)}
       <label><input type="checkbox" id="tMusic" checked> music</label>
       <label><input type="checkbox" id="tZoom" checked> zoom jumps</label>
       <label><input type="checkbox" id="tGlow"> glow above head</label>
+      <label><input type="checkbox" id="tPops"> word pops</label>
       <label><input type="checkbox" id="tSafe"> Instagram safe zone</label>
     </div>
     </div>
@@ -361,6 +362,32 @@ footer.brand a:hover{color:var(--lemon)}
         <label class="toggles"><input type="checkbox" id="topFade"> black top fade</label>
       </div>
       <p class="note" id="glNote"></p>
+    </section>
+
+    <section class="card wide" id="autoCard">
+      <h2>auto edit</h2>
+      <p class="note">Paste your script (optional) and press Auto edit. It listens to your clip, cuts the dead air, times captions to your voice using your exact words, picks the key word in each line (yellow, zoom-in, word pop), writes the hook, drops your pictures on the words they match, and adds a counting graph when you say a number.</p>
+      <div class="field"><span>Your script (what you say, in order)</span><textarea id="aeScript" rows="4" placeholder="Paste the script you read in the clip. Leave empty to use what the speech model hears."></textarea></div>
+      <div class="row">
+        <label class="toggles"><input type="checkbox" id="aeCut"> cut silences</label>
+        <label class="toggles"><input type="checkbox" id="aeCaps"> captions</label>
+        <label class="toggles"><input type="checkbox" id="aeHook"> hook from the first line</label>
+        <label class="toggles"><input type="checkbox" id="aePics"> place pictures</label>
+        <label class="toggles"><input type="checkbox" id="aeNums"> number graphs</label>
+        <label class="toggles"><input type="checkbox" id="aeWhisper"> listen with the speech model</label>
+      </div>
+      <div class="row">
+        <div class="field grow"><span>Silence strictness</span><input type="range" id="aeDb" min="14" max="40" step="1"></div>
+        <div class="field grow"><span>Shortest pause to cut (s)</span><input type="range" id="aePause" min="0.25" max="1.2" step="0.05"></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="aeGo">Auto edit</button>
+        <button class="btn small" id="aeCutOnly">Only cut silences</button>
+        <button class="btn small" id="aeUndo" disabled>Undo auto edit</button>
+      </div>
+      <div class="progress"><i id="aeBar"></i></div>
+      <p class="status" id="aeStatus"></p>
+      <div class="evlist" id="cutawayList"></div>
     </section>
 
     <section class="card" id="trimCard">
@@ -652,7 +679,8 @@ const DEFAULTS = {
   sfx:{kind:"double", vol:.6, emph:"pop", full:"whoosh", word:"none"},
   music:{vol:.25, duck:true},
   x:{follow:true, followText:"+ Follow @talkaditalk", mark:false, markText:"@talkaditalk", series:true, seriesText:"Part of the privileged yapping series"},
-  t:{sfx:true, music:true, zoom:true, glow:false, safe:false}
+  t:{sfx:true, music:true, zoom:true, glow:false, safe:false, pops:true},
+  ae:{script:"", cut:true, caps:true, hook:true, pics:true, nums:true, whisper:true, db:26, pause:0.45}
 };
 let S = structuredClone(DEFAULTS);
 try { const saved = JSON.parse(localStorage.getItem("reelstudio.v1")||"null"); if (saved) S = deepMerge(S, saved); } catch(e){}
@@ -661,7 +689,7 @@ let saveT; function save(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{ loc
 
 let pics = [];            // {id,img,src,t0,dur,mode,anim,sfx,x,y,w,rot}
 let selPic = null, picId = 1;
-let vidLoaded = false, DEMO_DUR = 14, demoT = 0, playing = false;
+let vidFile=null, cutaways=[], boardPins=[], vidLoaded = false, DEMO_DUR = 14, demoT = 0, playing = false;
 let subs = [];            // {t0,t1,text}
 let exporting = false;
 
@@ -1103,12 +1131,12 @@ function render(){
   else drawDemoBg(t);
   ctx.restore();
   ctx.save(); ctx.filter=useGL?"none":(lookFilter[look]||"none"); drawPics(t,"full"); ctx.restore();
-  drawPics(t,"cards");
+  const cw=cutawayAt(t); if (cw) drawCutaway(cw,t); else drawPics(t,"cards");
   if (useGL) gradeRegion(look,S.lutAmt,0,0,cv.width,cv.height);
   drawLook(t);
   if (S.topFade){ const g=ctx.createLinearGradient(0,0,0,740); g.addColorStop(0,"#000"); g.addColorStop(320/740,"#000"); g.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=g; ctx.fillRect(0,0,W,740); }
   if (S.t.glow){ ctx.save(); ctx.globalCompositeOperation="screen"; const g=ctx.createRadialGradient(CX(),Y(520),20,CX(),Y(520),460*K()); const a=.32+.05*Math.sin(t*2); g.addColorStop(0,`rgba(255,240,205,${a})`); g.addColorStop(1,"rgba(255,240,205,0)"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.restore(); }
-  drawHook(t); drawSubtitle(t);
+  drawHook(t); drawPops(t); drawSubtitle(t);
   drawGrain(t);
   drawExtras(t);
   if (S.t.safe && !exporting) drawSafe();
@@ -1209,7 +1237,7 @@ function buildUI(){
   bindCheck("xMark",()=>S.x.mark,v=>S.x.mark=v); bindText("xMarkText",()=>S.x.markText,v=>S.x.markText=v);
   bindCheck("xSeries",()=>S.x.series,v=>S.x.series=v); bindText("xSeriesText",()=>S.x.seriesText,v=>S.x.seriesText=v);
   bindCheck("tSfx",()=>S.t.sfx,v=>S.t.sfx=v); bindCheck("tMusic",()=>S.t.music,v=>S.t.music=v);
-  bindCheck("tZoom",()=>S.t.zoom,v=>S.t.zoom=v); bindCheck("tGlow",()=>S.t.glow,v=>S.t.glow=v); bindCheck("tSafe",()=>S.t.safe,v=>S.t.safe=v);
+  bindCheck("tZoom",()=>S.t.zoom,v=>S.t.zoom=v); bindCheck("tGlow",()=>S.t.glow,v=>S.t.glow=v); bindCheck("tPops",()=>S.t.pops,v=>S.t.pops=v); bindCheck("tSafe",()=>S.t.safe,v=>S.t.safe=v);
   renderPicList();
 }
 
@@ -1232,6 +1260,7 @@ function updateCards(){
   const car=isCar(), an=isAnim(), ly=S.mode==="lyric";
   VIDEO_ONLY.forEach(id=>$(id).hidden=car);
   if (an){ ["styleRow","trimCard","textCard","sfxCard","evCard","picsCard","clipVideo"].forEach(id=>$(id).hidden=true); }
+  $("autoCard").hidden=car||an;
   ["hookCard","subCard","extrasCard"].forEach(id=>$(id).hidden=car||an||ly); $("lyricCard").hidden=car||an||!ly;
   $("animCard").hidden=!an; $("pinCard").hidden=an; $("tlMini").hidden=car||an;
   $("carCard").hidden=!car; $("slideNav").hidden=!car; $("slStrip").hidden=!car;
@@ -1285,10 +1314,10 @@ $("sfxUp").onchange=async e=>{
 };
 
 /* ---------- Pinterest ---------- */
-function addPicFromUrl(url,title){
+function addPicFromUrl(url,title,at){
   if (isCar()){ setSlideImage(url,title); return; }
   const img=new Image(); img.crossOrigin="anonymous";
-  img.onload=()=>{ const i=pics.length; const p={id:picId++,img,src:url,t0:+Math.min(now(),Math.max(0,dur()-1)).toFixed(1),dur:2,mode:"card",anim:["pop","slide","drop"][i%3],sfx:"default",x:i%2?740:340,y:660,w:340,rot:i%2?4:-4}; pics.push(p); selectPic(p); $("pinNote").textContent=(title?`Added “${title}”`:"Added")+" at "+fmt(p.t0)+"."; };
+  img.onload=()=>{ const i=pics.length; const p={id:picId++,img,src:url,title:title||"",t0:at!=null?+at.toFixed(2):+Math.min(now(),Math.max(0,dur()-1)).toFixed(1),dur:2,mode:"card",anim:["pop","slide","drop"][i%3],sfx:"default",x:i%2?740:340,y:660,w:340,rot:i%2?4:-4}; pics.push(p); selectPic(p); $("pinNote").textContent=(title?`Added “${title}”`:"Added")+" at "+fmt(p.t0)+"."; };
   img.onerror=()=>{ $("pinNote").textContent="That picture wouldn't load here. Save it to your device and use “Add pictures” instead."; };
   img.src=url;
 }
@@ -1318,7 +1347,7 @@ async function loadPins(){
   const seen=new Set(); const list=[];
   for (const p of (live||[]).concat(synced)){ if (seen.has(p.id)) continue; seen.add(p.id); list.push(p); }
   if (!list.length) return emptyMsg(grid,"Couldn't reach Pinterest just now. Open the board, right-click a pin, copy the image address and paste it below, or save pins and use “Add pictures”.");
-  grid.innerHTML="";
+  boardPins=list; grid.innerHTML="";
   list.forEach(pin=>pinButton(grid,pin.thumb||pin.url,pin.title,()=>addPicFromUrl(pin.url,pin.title)));
   $("pinNote").textContent=`${list.length} pins from your board. Tap one to drop it into the reel at the playhead.`;
 }
@@ -1408,7 +1437,7 @@ $("pDel").onclick=()=>{ if(!selPic) return; pics=pics.filter(p=>p!==selPic); sel
 $("picIn").onchange=e=>{
   const files=[...e.target.files]; let t=now(); let i=0;
   for (const f of files){ const src=URL.createObjectURL(f); const img=new Image(); img.src=src;
-    const p={id:picId++,img,src,t0:+Math.min(t,Math.max(0,dur()-1)).toFixed(1),dur:2,mode:"card",anim:["pop","slide","drop"][i%3],sfx:"default",x:picDrop?picDrop.x:(i%2?740:340),y:picDrop?picDrop.y:660,w:340,rot:i%2?4:-4};
+    const p={id:picId++,img,src,title:f.name.replace(/\.[^.]+$/,"").replace(/[-_]+/g," "),t0:+Math.min(t,Math.max(0,dur()-1)).toFixed(1),dur:2,mode:"card",anim:["pop","slide","drop"][i%3],sfx:"default",x:picDrop?picDrop.x:(i%2?740:340),y:picDrop?picDrop.y:660,w:340,rot:i%2?4:-4};
     pics.push(p); t+=2.2; i++; if (files.length===1) selPic=p; }
   e.target.value=""; picDrop=null; renderPicList(); if (selPic) selectPic(selPic);
 };
@@ -1460,6 +1489,7 @@ function openCtx(cx,cy,q,pic,touch){
   const k=$("evKind").value&&$("evKind").value!=="none"?$("evKind").value:"whoosh";
   item("Add a sound here",()=>{ sfxEvents.push({id:evId++,t:+now().toFixed(2),kind:k}); ensureAudio(); playSfx(k); renderEvents(); }, ($("evKind").selectedOptions[0]||{}).textContent||"");
   hr();
+  item("Insert animation here",()=>{ const ty=["graph","steps","route","breakdown"].includes(S.anim.type)?S.anim.type:"graph"; cutaways.push({t0:+now().toFixed(2),dur:2.5,type:ty}); renderCutaways(); },AN_TYPES[["graph","steps","route","breakdown"].includes(S.anim.type)?S.anim.type:"graph"][0]);
   item("Start here",()=>$("trimA").click()); item("End here",()=>$("trimB").click());
   if (cutStart===null) item("Cut from here",()=>$("cutA").click()); else item("Cut to here",()=>$("cutB").click(),"from "+fmt(cutStart));
   hr();
@@ -1476,7 +1506,7 @@ addEventListener("scroll",closeCtx,{passive:true}); addEventListener("resize",cl
 /* ---------- clip + music input ---------- */
 function loadVideo(file){
   if (!file || !file.type.startsWith("video")) return;
-  pause(); vid.src=URL.createObjectURL(file); vidLoaded=true; vid.load();
+  pause(); vidFile=file; vid.src=URL.createObjectURL(file); vidLoaded=true; vid.load();
   $("dropHint").hidden=true; $("clipInfo").textContent=file.name+" · retime your captions under “What you say” to match it.";
   if (pics.length && pics.every(p=>p.src.startsWith("data:"))) { pics=[]; selectPic(null); }
   seek(0);
@@ -1614,6 +1644,159 @@ function enforceEdit(){
   if (t < trimA()-0.02){ seek(trimA()); return; }
   if (t >= trimB()-0.01 && trimB()<dur()-0.01){ ended(); return; }
   const c=cutAt(t); if (c){ seek(Math.min(c.b, dur())); }
+}
+
+/* ---------- auto edit: silences, speech timing, captions, key words, pictures, number graphs ---------- */
+const cutawayAt=t=>cutaways.find(c=>t>=c.t0 && t<c.t0+c.dur);
+function drawCutaway(cw,t){
+  const keep=S.anim; S.anim={...keep, type:cw.type, dark:true, graph:cw.graph||keep.graph, steps:cw.steps||keep.steps};
+  const lt=t-cw.t0; ctx.save(); ctx.globalAlpha=clamp(Math.min(lt/0.15,(cw.dur-lt)/0.15),0,1);
+  try{ if (cw.type==="steps") drawStepsAnim(lt,cw.dur); else if (cw.type==="route") drawRouteAnim(lt,cw.dur); else if (cw.type==="breakdown") drawBreakdownAnim(lt,cw.dur); else drawGraphAnim(lt,cw.dur); } finally { ctx.restore(); S.anim=keep; }
+}
+function drawPops(t){
+  if (!S.t.pops || t<S.hook.dur) return;
+  const s=subs.find(c=>c.text.includes("*") && t>=c.t0 && t<c.t0+0.85); if (!s) return;
+  const m=s.text.match(/\*([^*]+)\*/); if (!m) return; const w=m[1].toUpperCase(); const lt=t-s.t0;
+  const sc=back(clamp(lt/0.22,0,1)), a=clamp((0.85-lt)/0.2,0,1);
+  ctx.save(); ctx.globalAlpha=a; ctx.translate(CX(),Y(760)); ctx.scale(sc,sc); ctx.rotate(-0.04); const k=K();
+  ctx.font=`400 ${150*k}px Anton,Impact,sans-serif`; ctx.textAlign="center"; ctx.lineJoin="round"; ctx.lineWidth=18*k; ctx.strokeStyle="rgba(0,0,0,.85)"; ctx.strokeText(w,0,0); ctx.fillStyle=S.sub.color; ctx.fillText(w,0,0); ctx.restore();
+}
+const STOP=new Set("a an the and or but so to of in on at for with from by is are was were be been am i you he she it we they me my your our their this that these those do does did not no yes just really very like what when where who why how can will would should could have has had get got if then than there here about into out up down over more most some any all one".split(" "));
+const norm=w=>String(w).toLowerCase().replace(/[^a-z0-9%$']/g,"");
+async function decodeClip(){
+  if (!vidFile) throw new Error("Add your video first (Your clip → Choose video).");
+  ensureAudio(); const buf=await AC.decodeAudioData(await vidFile.arrayBuffer());
+  const ch=buf.numberOfChannels, n=buf.length, mono=new Float32Array(n);
+  for (let c=0;c<ch;c++){ const d=buf.getChannelData(c); for (let i=0;i<n;i++) mono[i]+=d[i]/ch; }
+  return {mono, sr:buf.sampleRate, dur:buf.duration};
+}
+function speechSegments(a){
+  const win=Math.round(a.sr*0.02), frames=Math.floor(a.mono.length/win), db=new Float32Array(frames);
+  for (let f=0;f<frames;f++){ let s2=0; for (let i=f*win;i<(f+1)*win;i++) s2+=a.mono[i]*a.mono[i]; db[f]=10*Math.log10(s2/win+1e-10); }
+  const sorted=Array.from(db).sort((x,y)=>x-y); const p10=sorted[Math.floor(frames*0.1)], p95=sorted[Math.floor(frames*0.95)];
+  const thr=Math.max(p95-S.ae.db, p10+6);
+  const segs=[]; let st=-1;
+  for (let f=0;f<=frames;f++){ const on=f<frames && db[f]>thr; if (on && st<0) st=f; if (!on && st>=0){ segs.push([st*0.02,f*0.02]); st=-1; } }
+  const merged=[]; for (const sg of segs){ const l=merged[merged.length-1]; if (l && sg[0]-l[1]<S.ae.pause) l[1]=sg[1]; else merged.push([...sg]); }
+  return merged.filter(sg=>sg[1]-sg[0]>=0.18);
+}
+function cutsFromSegments(segs,dur){
+  const pad=0.1; const out={a:Math.max(0,(segs[0]?segs[0][0]:0)-pad), b:Math.min(dur,(segs.length?segs[segs.length-1][1]:dur)+0.3), cuts:[]};
+  for (let i=1;i<segs.length;i++){ const a=segs[i-1][1]+pad, b=segs[i][0]-pad; if (b-a>=0.25) out.cuts.push({a:+a.toFixed(2),b:+b.toFixed(2)}); }
+  return out;
+}
+function wordsOverSpeech(words,segs){ // no-AI timing: spread the script over the parts where you're talking
+  const total=segs.reduce((n,s2)=>n+s2[1]-s2[0],0)||1; const wts=words.map(w=>w.replace(/[^\w]/g,"").length+2); const sum=wts.reduce((a,b)=>a+b,0);
+  const at=x=>{ let left=x*total; for (const s2 of segs){ const L=s2[1]-s2[0]; if (left<=L) return s2[0]+left; left-=L; } return segs[segs.length-1][1]; };
+  let acc=0; return words.map((w,i)=>{ const t0=at(acc/sum); acc+=wts[i]; return {w, t0, t1:at(acc/sum)}; });
+}
+let asr=null;
+async function transcribe(a,status){
+  if (inClaude()) throw new Error("The speech model only runs on the GitHub Pages version.");
+  if (!asr){ status("Loading the speech model (about 40 MB, first time only)…");
+    const tf=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2/dist/transformers.min.js");
+    asr=await tf.pipeline("automatic-speech-recognition","Xenova/whisper-tiny.en",{progress_callback:p=>{ if (p.status==="progress" && p.total) status(`Downloading the speech model… ${Math.round(100*p.loaded/p.total)}%`); }}); }
+  status("Resampling audio…");
+  const len=Math.ceil(a.dur*16000); const off=new OfflineAudioContext(1,len,16000); const b=off.createBuffer(1,a.mono.length,a.sr); b.copyToChannel(a.mono,0);
+  const src=off.createBufferSource(); src.buffer=b; src.connect(off.destination); src.start(); const r=await off.startRendering(); const pcm=r.getChannelData(0);
+  status("Listening to your voice… (a minute or two for a long clip)");
+  let out; try { out=await asr(pcm,{return_timestamps:"word",chunk_length_s:30,stride_length_s:5}); }
+  catch(e){ out=await asr(pcm,{return_timestamps:true,chunk_length_s:30,stride_length_s:5}); }
+  const words=[];
+  for (const c of (out.chunks||[])){ const [t0,t1]=c.timestamp||[0,0]; const parts=String(c.text).trim().split(/\s+/).filter(Boolean); const end=t1??t0+0.4;
+    parts.forEach((w,i)=>words.push({w, t0:t0+(end-t0)*i/parts.length, t1:t0+(end-t0)*(i+1)/parts.length})); }
+  return words;
+}
+function alignScript(scriptWords,heard){ // keep your spelling, use the model's timing
+  const A=scriptWords.map(norm), B=heard.map(h=>norm(h.w)); const n=A.length, m=B.length;
+  const D=Array.from({length:n+1},()=>new Uint16Array(m+1)); for (let i=0;i<=n;i++) D[i][0]=i; for (let j=0;j<=m;j++) D[0][j]=j;
+  for (let i=1;i<=n;i++) for (let j=1;j<=m;j++) D[i][j]=Math.min(D[i-1][j]+1,D[i][j-1]+1,D[i-1][j-1]+(A[i-1]===B[j-1]?0:1));
+  const map=new Array(n).fill(-1); let i=n,j=m; while (i>0&&j>0){ if (D[i][j]===D[i-1][j-1]+(A[i-1]===B[j-1]?0:1)){ map[i-1]=j-1; i--; j--; } else if (D[i][j]===D[i-1][j]+1) i--; else j--; }
+  const res=scriptWords.map((w,k)=>map[k]>=0?{w,t0:heard[map[k]].t0,t1:heard[map[k]].t1}:{w,t0:null,t1:null});
+  for (let k=0;k<res.length;k++) if (res[k].t0===null){ let p=k-1; while(p>=0&&res[p].t0===null) p--; let q=k+1; while(q<res.length&&res[q].t0===null) q++;
+    const a=p>=0?res[p].t1:(heard[0]?.t0||0), b=q<res.length?res[q].t0:(heard[heard.length-1]?.t1||a+1); const gaps=q-p; res[k].t0=a+(b-a)*(k-p-1+.1)/gaps; res[k].t1=a+(b-a)*(k-p)/gaps; }
+  return res;
+}
+function keyWordIndex(ws){ let best=-1, sc=-1; ws.forEach((w,i)=>{ const n=norm(w); if (!n||STOP.has(n)) return; let s2=n.length+(/\d/.test(n)?6:0); if (s2>sc){ sc=s2; best=i; } }); return best; }
+function parseNumber(text){ const m=text.match(/(\$)?\b(\d+(?:[.,]\d+)?)\s*(k|m|thousand|million|%|percent)?\b/i); if (!m) return null;
+  let v=parseFloat(m[2].replace(",","")); const u=(m[3]||"").toLowerCase(); if (u==="k"||u==="thousand") v*=1e3; if (u==="m"||u==="million") v*=1e6;
+  if (v<10 && !u && !m[1]) return null; return {v, prefix:m[1]||"", suffix:(u==="%"||u==="percent")?"%":""}; }
+function buildFromWords(words,dur){
+  const sentences=[]; let cur=[];
+  words.forEach((w,i)=>{ cur.push(w); const gap=words[i+1]?words[i+1].t0-w.t1:9; if (/[.!?]$/.test(w.w)||gap>0.7||cur.length>=14){ sentences.push(cur); cur=[]; } }); if (cur.length) sentences.push(cur);
+  const result={lines:[], hook:"", pops:0, cutaways:[], sentences};
+  sentences.forEach((sen,si)=>{
+    const ki=keyWordIndex(sen.map(x=>x.w));
+    let chunk=[]; const flush=(endGap)=>{ if (!chunk.length) return; const txt=chunk.map(x=>x.star?`*${x.w.replace(/[.,!?;:]$/,"")}*`:x.w.replace(/[.,;:]$/,"")).join(" "); result.lines.push(fmt(chunk[0].t0)+" "+txt); if (endGap) result.lines.push(fmt(chunk[chunk.length-1].t1+0.05)+" -"); chunk=[]; };
+    sen.forEach((w,i)=>{ chunk.push({...w,star:i===ki && si>0}); const next=sen[i+1]; if (chunk.length>=S.sub.words || /[,;:]$/.test(w.w) || !next) flush(!next && ((sentences[si+1]?.[0]?.t0??dur)-w.t1>0.6)); });
+    if (ki>=0 && si>0) result.pops++;
+    const num=parseNumber(sen.map(x=>x.w).join(" "));
+    if (num && S.ae.nums){ const at=sen.find(x=>/\d/.test(x.w))||sen[0]; const steps=6, vals=[]; for (let k=0;k<steps;k++) vals.push(Math.round(num.v*Math.pow(k/(steps-1),2.2)));
+      const after=sen.slice(sen.indexOf(at)+1).map(x=>x.w.replace(/[^\w']/g,"")).filter(x=>x&&!STOP.has(x.toLowerCase())).slice(0,1).join(" ");
+      result.cutaways.push({t0:+at.t0.toFixed(2),dur:2.4,type:"graph",graph:{title:"",values:vals.join(","),label:after,prefix:num.prefix,suffix:num.suffix}}); }
+  });
+  const first=(sentences[0]||[]).map(x=>x.w.replace(/[.!?]$/,""));
+  if (first.length){ const half=Math.ceil(first.length/2); result.hook=first.slice(0,half).join(" ")+"\n"+first.slice(half).join(" "); }
+  return result;
+}
+function placePictures(sentences){
+  const mine=pics.filter(p=>!String(p.src).startsWith("data:")); let used=new Set(), placed=0;
+  const tokens=p=>norm(p.title||p.name||"").split(/\s+/).concat(String(p.src).split(/[\/._-]/).map(norm)).filter(x=>x.length>2);
+  const senToks=sentences.map(sen=>new Set(sen.map(x=>norm(x.w))));
+  const slots=sentences.map((sen,i)=>({i,t:sen[0].t0})).filter(x=>x.i>0);
+  mine.forEach((p,k)=>{ let best=-1; const tk=tokens(p); senToks.forEach((st,i)=>{ if (i===0||used.has(i)) return; if (tk.some(x=>st.has(x)) && best<0) best=i; });
+    if (best<0){ const free=slots.filter(sl=>!used.has(sl.i)); if (!free.length) return; best=free[Math.floor(k*free.length/Math.max(1,mine.length))%free.length].i; }
+    used.add(best); p.t0=+sentences[best][0].t0.toFixed(2); p.dur=Math.min(2.2,Math.max(1.2,(sentences[best].at(-1).t1-sentences[best][0].t0))); placed++; });
+  if (!mine.length && boardPins.length){ // borrow matching pins from the board
+    sentences.forEach((sen,i)=>{ if (i===0||placed>=3) return; const st=new Set(sen.map(x=>norm(x.w)).filter(x=>x.length>3&&!STOP.has(x)));
+      const pin=boardPins.find(b=>norm(b.title||"").split(/\s+/).some(x=>st.has(x))); if (!pin) return; placed++;
+      addPicFromUrl(pin.url,pin.title,sen[0].t0); }); }
+  return placed;
+}
+function renderCutaways(){
+  const el=$("cutawayList"); el.innerHTML=""; cutaways.sort((a,b)=>a.t0-b.t0).forEach(c=>{ const row=document.createElement("div"); row.className="ev";
+    const lab=document.createElement("span"); lab.className="note"; lab.style.gridColumn="1 / 3"; lab.textContent=`${AN_TYPES[c.type]?.[0]||c.type} at ${fmt(c.t0)}`+(c.graph?.values?` · counts to ${fmtNum(+String(c.graph.values).split(",").pop(),c.graph)}`:"");
+    const go=document.createElement("button"); go.className="btn small"; go.textContent="▶"; go.setAttribute("aria-label","Preview"); go.onclick=()=>{ seek(Math.max(0,c.t0-0.5)); play(); };
+    const del=document.createElement("button"); del.className="btn small danger"; del.textContent="✕"; del.setAttribute("aria-label","Remove animation"); del.onclick=()=>{ cutaways=cutaways.filter(x=>x!==c); renderCutaways(); };
+    row.append(lab,go,del); el.appendChild(row); });
+}
+let aeBackup=null;
+async function autoEdit(onlyCut){
+  const st=t=>$("aeStatus").textContent=t, bar=$("aeBar");
+  ["aeGo","aeCutOnly"].forEach(id=>$(id).disabled=true); pause();
+  try{
+    st("Reading your clip's audio…"); bar.style.width="10%";
+    const a=await decodeClip(); const segs=speechSegments(a);
+    if (!segs.length) throw new Error("Couldn't hear any speech. Try a lower silence strictness.");
+    aeBackup={S:JSON.parse(JSON.stringify(S)), cuts:JSON.parse(JSON.stringify(cuts)), cutaways:[...cutaways], pics:pics.map(p=>({p,t0:p.t0,dur:p.dur})), npics:pics.length};
+    if (S.ae.cut || onlyCut){ const c=cutsFromSegments(segs,a.dur); S.trim={a:+c.a.toFixed(2),b:+c.b.toFixed(2)}; cuts=c.cuts; renderTimeline(); }
+    bar.style.width="35%";
+    if (onlyCut){ st(`Cut ${cuts.length} pauses. Final length ${fmt(keptLength())} of ${fmt(dur())}.`); return; }
+    const scriptWords=S.ae.script.trim().split(/\s+/).filter(Boolean);
+    let words=null, how="";
+    if (S.ae.whisper){ try { const heard=await transcribe(a,st); if (heard.length){ words=scriptWords.length?alignScript(scriptWords,heard):heard; how=scriptWords.length?"speech model + your script":"speech model"; } } catch(e){ st("Speech model unavailable ("+(e.message||e)+"). Using the audio timing instead…"); await new Promise(r=>setTimeout(r,900)); } }
+    if (!words){ if (!scriptWords.length) throw new Error("Paste your script, or use the GitHub Pages version so the speech model can listen."); words=wordsOverSpeech(scriptWords,segs); how="audio timing + your script"; }
+    bar.style.width="75%"; st("Building the edit…");
+    const r=buildFromWords(words,a.dur);
+    if (S.ae.caps){ if (S.mode==="lyric"){ const items=[], times=[]; r.sentences.forEach(sen=>{ sen.forEach(w=>{ items.push({text:w.w.replace(/[.,;:!?]$/,"")}); times.push(w.t0); }); items.push({brk:true}); times.push(null); }); S.lyricText=lyricItemsToText(items,times,Math.min(a.dur,words.at(-1).t1+1)); }
+      else S.subText=r.lines.join("\n"); $("subText").value=S[textKey()]; refreshSubs(); }
+    if (S.ae.hook && r.hook){ S.hook.text=r.hook; $("hookText").value=r.hook; }
+    cutaways=cutaways.filter(c=>!c.auto).concat(r.cutaways.map(c=>({...c,auto:true}))); renderCutaways();
+    const placed=S.ae.pics?placePictures(r.sentences):0; renderPicList();
+    save(); bar.style.width="100%"; $("aeUndo").disabled=false;
+    st(`Done (${how}): ${r.lines.filter(l=>!/ -$/.test(l)).length} captions, ${r.pops} key words, ${cuts.length} cuts, ${placed} pictures placed, ${r.cutaways.length} number graphs. Press Play to watch.`);
+    seek(trimA());
+  } catch(e){ st(e.message||String(e)); }
+  finally { ["aeGo","aeCutOnly"].forEach(id=>$(id).disabled=false); setTimeout(()=>bar.style.width="0",1500); }
+}
+function initAutoUI(){
+  const ae=S.ae; const ta=$("aeScript"); ta.value=ae.script; ta.oninput=()=>{ ae.script=ta.value; save(); };
+  [["aeCut","cut"],["aeCaps","caps"],["aeHook","hook"],["aePics","pics"],["aeNums","nums"],["aeWhisper","whisper"]].forEach(([id,k])=>bindCheck(id,()=>ae[k],v=>ae[k]=v));
+  bindRange("aeDb",()=>ae.db,v=>ae.db=v); bindRange("aePause",()=>ae.pause,v=>ae.pause=v);
+  $("aeGo").onclick=()=>autoEdit(false); $("aeCutOnly").onclick=()=>autoEdit(true);
+  $("aeUndo").onclick=()=>{ if (!aeBackup) return; const b=aeBackup; Object.assign(S,b.S); cuts=b.cuts; cutaways=b.cutaways; pics=pics.slice(0,b.npics); b.pics.forEach(x=>{ x.p.t0=x.t0; x.p.dur=x.dur; });
+    $("subText").value=S[textKey()]; $("hookText").value=S.hook.text; refreshSubs(); renderTimeline(); renderCutaways(); renderPicList(); save(); aeBackup=null; $("aeUndo").disabled=true; $("aeStatus").textContent="Auto edit undone."; };
+  if (inClaude()){ $("aeWhisper").parentElement.title="Runs on the GitHub Pages version"; }
 }
 
 /* ---------- animations (graph, steps, map route), drawn live in the browser ---------- */
@@ -2000,7 +2183,7 @@ $("thumbBtn").onclick=()=>{
 })();
 
 /* ---------- boot ---------- */
-initGL(); pics=samplePics(); refreshSubs(); initCarUI(); initAnimUI(); buildUI(); renderTimeline(); loadPins(); initLibrary();
+initGL(); pics=samplePics(); refreshSubs(); initCarUI(); initAnimUI(); initAutoUI(); buildUI(); renderTimeline(); loadPins(); initLibrary();
 Object.values(HOOK_FONTS).concat(Object.values(SUB_FONTS)).forEach(f=>{ try{ document.fonts.load(fontStr(f,40)); }catch(e){} });
 requestAnimationFrame(loop);
 })();
