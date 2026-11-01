@@ -46,6 +46,8 @@ header p{margin:0;color:var(--muted);font-size:13px;max-width:44ch}
 .wrap{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:22px;max-width:1320px;margin:0 auto;align-items:start}
 .stage{position:sticky;top:max(12px,env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:10px}
 .phone{position:relative;width:100%;aspect-ratio:9/16;max-width:100%;border-radius:18px;overflow:hidden;background:#000;box-shadow:0 0 0 1px var(--line),0 24px 60px rgba(0,0,0,.55)}
+.phone.wide{aspect-ratio:16/9}
+.wrap.wide{grid-template-columns:minmax(300px,600px) 1fr}
 .phone canvas{width:100%;height:100%;display:block;touch-action:none}
 .drop-hint{position:absolute;inset:auto 10px 10px 10px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:6px 10px;border-radius:8px;text-align:center;pointer-events:none}
 .transport{display:flex;align-items:center;gap:10px}
@@ -186,6 +188,9 @@ footer.brand a:hover{color:var(--lemon)}
   <main class="grid">
     <section class="card wide">
       <h2>Reel type</h2>
+      <p class="lbl">Format</p>
+      <div class="opts" id="fmtOpts"></div>
+      <p class="lbl">Style</p>
       <div class="opts" id="modeOpts"></div>
       <p class="note" id="modeNote"></p>
     </section>
@@ -376,10 +381,11 @@ footer.brand a:hover{color:var(--lemon)}
 
     <section class="card">
       <h2>Export</h2>
-      <p class="note">Plays the reel once from the start and records it at 720×1280 with all sound. Keep this tab open until it finishes.</p>
+      <p class="note" id="expNote">Plays the reel once from the start and records it at 720×1280 with all sound. Keep this tab open until it finishes.</p>
       <div class="row">
         <button class="btn primary" id="expBtn">Export reel</button>
         <button class="btn" id="expCancel" hidden>Cancel</button>
+        <button class="btn" id="thumbBtn">Save thumbnail</button>
       </div>
       <div class="progress"><i id="expBar"></i></div>
       <p class="status" id="expStatus"></p>
@@ -419,7 +425,10 @@ footer.brand a:hover{color:var(--lemon)}
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-const W = 1080, H = 1920, SC = 720 / 1080;
+let W = 1080, H = 1920, SC = 720 / 1080;
+/* Layout is designed on the 1080x1920 reel grid; these map it onto the current frame (reel or 16:9 YouTube). */
+const yt=()=>S.fmt==="yt";
+const CX=()=>W/2, Y=v=>v*H/1920, XS=v=>v*W/1080, K=()=>yt()?1.1:1, MAXW=()=>W-120;
 const cv = $("cv"), ctx = cv.getContext("2d");
 const vid = $("vid"), mus = $("mus");
 
@@ -450,9 +459,11 @@ let sfxEvents = [], evId = 1;
 function sfxChoices(){ const o=[["none","No sound"]]; for (const [k,[n]] of Object.entries(SFX)) if (k!=="none") o.push([k,n]); for (const [k,n] of Object.entries(MORE_SFX)) o.push([k,n]); for (const [k,v] of Object.entries(customSfx)) o.push([k,"★ "+v.name]); return o; }
 
 /* ---------- state ---------- */
+const FORMATS = {reel:["Reel / Short","9:16 vertical"], yt:["YouTube","16:9 landscape"]};
 const MODES = {talk:["Talking head","house style: film look, hook, yellow subtitles"], lyric:["Lyric grid","text-only songs and voice-overs"]};
 const LY_BG = {band:["Film band","16:9 band on black, teal film"], full:["Full pictures","pictures fill the frame"], black:["Black","plain"], white:["White","black words, no glow"]};
 const DEFAULTS = {
+  fmt:"reel",
   mode:"talk",
   ly:{bg:"band", size:92, phrase:5, glow:true},
   lyricText:"0:00.3 nobody\n0:00.7 talks\n0:01.1 about\n0:01.5 the\n0:01.9 quiet|part\n0:03.0 /\n0:03.1 the\n0:03.4 cuts\n0:03.8 you\n0:04.2 never\n0:04.6 post\n0:05.8 /\n0:05.9 every\n0:06.3 frame\n0:06.8 you\n0:07.1 throw\n0:07.5 away\n0:08.7 /\n0:08.8 makes\n0:09.2 the\n0:09.5 one\n0:09.9 you\n0:10.3 keep\n0:13.8 /",
@@ -614,6 +625,10 @@ const grainTiles=[...Array(4)].map(()=>{ const c=document.createElement("canvas"
 const lookFilter={film:"sepia(.16) saturate(.86) contrast(.9) brightness(1.04)", clean:"none", warm:"sepia(.32) saturate(1.1) contrast(1.02) brightness(.95)", bw:"grayscale(1) contrast(1.12) brightness(.98)"};
 
 function drawDemoBg(t){
+  if (yt()){ const s=W/1080, w0=W, h0=H; ctx.save(); ctx.fillStyle="#2a1d16"; ctx.fillRect(0,0,W,H); ctx.translate(w0/2-540*s, h0/2-820*s); ctx.scale(s,s); W=1080; H=1920; try{ drawDemoBgReel(t); } finally { W=w0; H=h0; ctx.restore(); } return; }
+  drawDemoBgReel(t);
+}
+function drawDemoBgReel(t){
   const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#3a2a20"); g.addColorStop(.55,"#6b4a33"); g.addColorStop(1,"#2a1d16"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   const lg=ctx.createRadialGradient(860,420,10,860,420,520); lg.addColorStop(0,"rgba(255,214,150,.75)"); lg.addColorStop(1,"rgba(255,214,150,0)"); ctx.fillStyle=lg; ctx.fillRect(0,0,W,H);
   ctx.fillStyle="#2b2018"; ctx.fillRect(0,1350,W,570);
@@ -633,8 +648,9 @@ function zoomAt(t){
 function picRect(p,t){
   const a=(t-p.t0), out=p.t0+p.dur-t;
   const img=p.img; const ar=(img.naturalHeight||1)/(img.naturalWidth||1);
-  let w=p.w, h=w*ar; if (h>1100){ h=1100; w=h/ar; }
-  let x=clamp(p.x,40+w/2,1040-w/2), y=clamp(p.y,250+h/2,1500-h/2);
+  let w=p.w*K(), h=w*ar; const maxH=yt()?H*0.7:1100; if (h>maxH){ h=maxH; w=h/ar; }
+  const bx=yt()?[60,W-60,60,H-60]:[40,1040,250,1500];
+  let x=clamp(XS(p.x),bx[0]+w/2,bx[1]-w/2), y=clamp(Y(p.y),bx[2]+h/2,bx[3]-h/2);
   let sc=1, al=1, dy=0;
   const k=a/0.38;
   if (p.anim==="pop") sc=.6+.4*back(k);
@@ -654,8 +670,8 @@ function drawPics(t,layer){
       const slide=(1-ease(a/0.3))*W*0.25; const push=1+0.06*(a/p.dur);
       ctx.save(); ctx.globalAlpha=clamp(Math.min(a/0.18,out/0.2),0,1);
       const ratio=iw/ih;
-      if (ratio>0.5 && ratio<0.66){ const s=Math.max(W/iw,H/ih)*1.04*push; ctx.drawImage(p.img,(W-iw*s)/2+slide,(H-ih*s)/2,iw*s,ih*s); }
-      else { ctx.filter="blur(30px) brightness(.55)"; const s=Math.max(W/iw,H/ih)*1.15; ctx.drawImage(p.img,(W-iw*s)/2,(H-ih*s)/2,iw*s,ih*s); ctx.filter="none"; const s2=Math.min(980/iw,1500/ih)*push; ctx.drawImage(p.img,(W-iw*s2)/2+slide,(H-ih*s2)/2,iw*s2,ih*s2); }
+      if (ratio/(W/H)>0.85 && ratio/(W/H)<1.2){ const s=Math.max(W/iw,H/ih)*1.04*push; ctx.drawImage(p.img,(W-iw*s)/2+slide,(H-ih*s)/2,iw*s,ih*s); }
+      else { ctx.filter="blur(30px) brightness(.55)"; const s=Math.max(W/iw,H/ih)*1.15; ctx.drawImage(p.img,(W-iw*s)/2,(H-ih*s)/2,iw*s,ih*s); ctx.filter="none"; const s2=Math.min((W-100)/iw,(H*0.8)/ih)*push; ctx.drawImage(p.img,(W-iw*s2)/2+slide,(H-ih*s2)/2,iw*s2,ih*s2); }
       ctx.restore();
       if (a<0.12){ ctx.fillStyle=`rgba(255,255,255,${.16*(1-a/.12)})`; ctx.fillRect(0,0,W,H); }
     }
@@ -675,7 +691,7 @@ function drawPics(t,layer){
 function textLine(str,x,y,f,size,color,opts={}){
   ctx.save(); ctx.font=fontStr(f,size,opts.bold); ctx.textAlign="center"; ctx.textBaseline="alphabetic";
   try{ ctx.letterSpacing=(f.sp||0)+"px"; }catch(e){}
-  let hs=f.hs||1; const mw=ctx.measureText(str).width*hs; const maxW=opts.maxW||960; if (mw>maxW) hs*=maxW/mw;
+  let hs=f.hs||1; const mw=ctx.measureText(str).width*hs; const maxW=opts.maxW||MAXW(); if (mw>maxW) hs*=maxW/mw;
   ctx.translate(x,y); ctx.scale(hs,1);
   if (opts.stroke){ ctx.lineJoin="round"; ctx.lineWidth=opts.stroke; ctx.strokeStyle="rgba(0,0,0,.75)"; ctx.shadowColor="rgba(0,0,0,.45)"; ctx.shadowBlur=10; ctx.shadowOffsetY=3; ctx.strokeText(str,0,0); ctx.shadowColor="transparent"; }
   else if (opts.shadow){ ctx.shadowColor="rgba(0,0,0,.35)"; ctx.shadowBlur=opts.shadow; ctx.shadowOffsetY=2; }
@@ -683,12 +699,12 @@ function textLine(str,x,y,f,size,color,opts={}){
 }
 function drawSubtitle(t){
   const s=subs.find(c=>t>=c.t0&&t<c.t1); if(!s) return;
-  const f=SUB_FONTS[S.sub.font], size=S.sub.size, y=SUB_POS[S.sub.pos][2];
+  const f=SUB_FONTS[S.sub.font], size=S.sub.size*K(), y=Y(SUB_POS[S.sub.pos][2]);
   ctx.save(); ctx.font=fontStr(f,size); try{ ctx.letterSpacing=(f.sp||0)+"px"; }catch(e){}
   const parts=s.text.split(/\s+/).map(w=>({w:w.replace(/\*/g,""),e:/^\*.*\*[.,!?]*$/.test(w)}));
   const space=ctx.measureText(" ").width; let total=parts.reduce((a,p)=>a+ctx.measureText(p.w).width,0)+space*(parts.length-1);
-  let hs=f.hs||1; if (total*hs>960) hs=960/total;
-  ctx.translate(540,y); ctx.scale(hs,1); let x=-total/2;
+  let hs=f.hs||1; if (total*hs>MAXW()) hs=MAXW()/total;
+  ctx.translate(CX(),y); ctx.scale(hs,1); let x=-total/2;
   ctx.textAlign="left"; ctx.lineJoin="round"; ctx.lineWidth=Math.max(4,size*.09);
   for (const p of parts){ ctx.strokeStyle="rgba(0,0,0,.8)"; ctx.shadowColor="rgba(0,0,0,.5)"; ctx.shadowBlur=12; ctx.shadowOffsetY=3; ctx.strokeText(p.w,x,0); ctx.shadowColor="transparent"; ctx.fillStyle=p.e?S.sub.emph:S.sub.color; ctx.fillText(p.w,x,0); x+=ctx.measureText(p.w).width+space; }
   ctx.restore();
@@ -696,24 +712,24 @@ function drawSubtitle(t){
 function drawHook(t){
   if (t>S.hook.dur || !S.hook.text.trim()) return;
   const f=HOOK_FONTS[S.hook.font]; let lines=S.hook.text.split("\n").filter(l=>l.trim()); if (f.up) lines=lines.map(l=>l.toUpperCase());
-  const size=S.hook.size, lh=size*1.05, top=S.hook.y-(lines.length-1)*lh/2;
-  lines.forEach((l,i)=>textLine(l,540,top+i*lh,f,size,S.hook.color,{shadow:f===HOOK_FONTS.helv?0:14,maxW:960}));
-  if (S.hook.sub.trim()) textLine(S.hook.sub,540,top+(lines.length-1)*lh+size*.7,HOOK_FONTS.helv,size*.38,S.hook.color,{maxW:900,shadow:8});
+  const size=S.hook.size*K(), lh=size*1.05, top=Y(S.hook.y)-(lines.length-1)*lh/2;
+  lines.forEach((l,i)=>textLine(l,CX(),top+i*lh,f,size,S.hook.color,{shadow:f===HOOK_FONTS.helv?0:14,maxW:MAXW()}));
+  if (S.hook.sub.trim()) textLine(S.hook.sub,CX(),top+(lines.length-1)*lh+size*.7,HOOK_FONTS.helv,size*.38,S.hook.color,{maxW:MAXW()-60,shadow:8});
 }
 function drawBox(text,y,yellow){
-  ctx.save(); ctx.font="800 40px Inter,sans-serif"; const w=ctx.measureText(text).width+56;
-  rr(ctx,540-w/2,y-34,w,68,12); ctx.fillStyle=yellow?"#F4F83A":"rgba(255,255,255,.95)"; ctx.fill();
-  ctx.fillStyle="#141414"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(text,540,y+2); ctx.restore();
+  ctx.save(); const k=K(); ctx.font=`800 ${40*k}px Inter,sans-serif`; const w=ctx.measureText(text).width+56*k;
+  rr(ctx,CX()-w/2,y-34*k,w,68*k,12*k); ctx.fillStyle=yellow?"#F4F83A":"rgba(255,255,255,.95)"; ctx.fill();
+  ctx.fillStyle="#141414"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(text,CX(),y+2); ctx.restore();
 }
-function drawMark(){ if (!S.x.mark || !S.x.markText) return; ctx.save(); ctx.globalAlpha=.6; ctx.font="600 30px \"Helvetica Neue\",Helvetica,Arial,sans-serif"; ctx.textAlign="right"; ctx.fillStyle=(S.mode==="lyric"&&S.ly.bg==="white")?"#111":"#fff"; ctx.shadowColor="rgba(0,0,0,.35)"; ctx.shadowBlur=6; ctx.fillText(S.x.markText,1030,300); ctx.restore(); }
+function drawMark(){ if (!S.x.mark || !S.x.markText) return; ctx.save(); ctx.globalAlpha=.6; ctx.font="600 30px \"Helvetica Neue\",Helvetica,Arial,sans-serif"; ctx.textAlign="right"; ctx.fillStyle=(S.mode==="lyric"&&S.ly.bg==="white")?"#111":"#fff"; ctx.shadowColor="rgba(0,0,0,.35)"; ctx.shadowBlur=6; if (yt()) ctx.fillText(S.x.markText,W-50,70); else ctx.fillText(S.x.markText,1030,300); ctx.restore(); }
 function drawExtras(t){
   drawMark();
   const D=dur();
-  if (S.x.series && S.x.seriesText && t<4){ const a=Math.min(1,t/0.3, (4-t)/0.3); ctx.save(); ctx.globalAlpha=a; textLine(S.x.seriesText,540,290,SUB_FONTS.inter,34,"#FFFFFF",{shadow:10,maxW:900}); ctx.restore(); }
+  if (S.x.series && S.x.seriesText && t<4){ const a=Math.min(1,t/0.3, (4-t)/0.3); ctx.save(); ctx.globalAlpha=a; textLine(S.x.seriesText,CX(),yt()?80:290,SUB_FONTS.inter,34*K(),"#FFFFFF",{shadow:10,maxW:MAXW()-60}); ctx.restore(); }
   if (S.x.follow && S.x.followText && D>6){
     const mid=D*0.45, end=D-2.6;
     const show=(t>=mid&&t<mid+2)?[mid,mid+2,false]:(t>=end&&t<D)?[end,D,true]:null;
-    if (show){ const a=t-show[0]; ctx.save(); ctx.globalAlpha=ease(a/0.25)*Math.min(1,(show[1]-t)/0.2); ctx.translate(0,(1-back(a/0.35))*40); drawBox(S.x.followText,1470,show[2]); ctx.restore(); }
+    if (show){ const a=t-show[0]; ctx.save(); ctx.globalAlpha=ease(a/0.25)*Math.min(1,(show[1]-t)/0.2); ctx.translate(0,(1-back(a/0.35))*40); drawBox(S.x.followText,yt()?H-110:1470,show[2]); ctx.restore(); }
   }
 }
 function drawLook(t){
@@ -721,13 +737,14 @@ function drawLook(t){
     ctx.save(); ctx.globalCompositeOperation="lighten"; ctx.fillStyle="rgba(48,38,32,1)"; ctx.globalAlpha=.55; ctx.fillRect(0,0,W,H);
     ctx.globalCompositeOperation="soft-light"; ctx.globalAlpha=.18; ctx.fillStyle="#ffb070"; ctx.fillRect(0,0,W,H); ctx.restore();
   }
-  if (S.look!=="clean"){ const v=ctx.createRadialGradient(540,900,500,540,960,1250); v.addColorStop(0,"rgba(0,0,0,0)"); v.addColorStop(1,"rgba(0,0,0,.45)"); ctx.fillStyle=v; ctx.fillRect(0,0,W,H); }
+  if (S.look!=="clean"){ const M=Math.max(W,H); const v=ctx.createRadialGradient(CX(),H*0.47,M*0.26,CX(),H/2,M*0.65); v.addColorStop(0,"rgba(0,0,0,0)"); v.addColorStop(1,"rgba(0,0,0,.45)"); ctx.fillStyle=v; ctx.fillRect(0,0,W,H); }
 }
 function drawGrain(t){
   if (S.grain>0){ ctx.save(); ctx.globalCompositeOperation="overlay"; ctx.globalAlpha=S.grain*.22; const pat=ctx.createPattern(grainTiles[Math.floor(t*24)%4],"repeat"); ctx.fillStyle=pat; ctx.translate((t*997)%220,(t*613)%220); ctx.fillRect(-220,-220,W+440,H+440); ctx.restore(); }
   if (S.look==="film"){ const seed=Math.floor(t*24); for (let i=0;i<3;i++){ const r=(Math.sin(seed*12.9898+i*78.233)*43758.5453)%1; if (Math.abs(r)<.35){ const x=Math.abs(Math.sin(seed+i*3.1))*W, y=Math.abs(Math.cos(seed*1.7+i))*H; ctx.fillStyle=i%2?"rgba(255,250,235,.55)":"rgba(20,15,10,.5)"; ctx.beginPath(); ctx.arc(x,y,1.5+Math.abs(r)*4,0,6.3); ctx.fill(); } } }
 }
 function drawSafe(){
+  if (yt()){ ctx.save(); ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.setLineDash([12,10]); ctx.lineWidth=2; ctx.strokeRect(W*0.05,H*0.05,W*0.9,H*0.9); ctx.fillStyle="rgba(255,60,60,.18)"; ctx.fillRect(W-260,H-90,230,60); ctx.fillStyle="#fff"; ctx.font="600 22px Inter,sans-serif"; ctx.fillText("title safe",W*0.05+10,H*0.05+28); ctx.fillText("timestamp",W-250,H-52); ctx.restore(); return; }
   ctx.save(); ctx.fillStyle="rgba(255,60,60,.18)"; ctx.fillRect(0,0,W,250); ctx.fillRect(0,1500,W,420); ctx.fillRect(950,1000,130,500);
   ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.setLineDash([12,10]); ctx.lineWidth=2; ctx.strokeRect(40,250,1000,1250);
   ctx.fillStyle="#fff"; ctx.font="600 26px Inter,sans-serif"; ctx.fillText("Instagram covers this",60,140); ctx.fillText("caption, username, audio",60,1700); ctx.restore();
@@ -750,16 +767,17 @@ function drawLyricBg(t){
   if (bg==="white"){ ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,H); return; }
   ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
   if (bg==="black") return;
-  const r = bg==="band" ? {x:0,y:BAND.y,w:W,h:BAND.h} : {x:0,y:0,w:W,h:H};
+  const r = (bg==="band" && !yt()) ? {x:0,y:BAND.y,w:W,h:BAND.h} : {x:0,y:0,w:W,h:H};
   ctx.save(); ctx.filter=tealFilter;
   if (hasVideo && vid.videoWidth) drawInRect(vid,vid.videoWidth,vid.videoHeight,r.x,r.y,r.w,r.h,1.02);
   else { const p=currentPic(t); if (p){ const k=clamp((t-p.t0)/6,0,1); drawInRect(p.img,p.img.naturalWidth,p.img.naturalHeight,r.x,r.y,r.w,r.h,1.02+0.06*k); } }
   ctx.restore();
   tealWash(r.x,r.y,r.w,r.h);
-  if (bg==="band"){ ctx.fillStyle="rgba(0,0,0,.12)"; ctx.fillRect(r.x,r.y,r.w,r.h); }
+  if (bg==="band" && !yt()){ ctx.fillStyle="rgba(0,0,0,.12)"; ctx.fillRect(r.x,r.y,r.w,r.h); }
 }
-const COLS=[.23,.375,.51,.68].map(c=>c*W);
+const COLS_F=[.23,.375,.51,.68]; let COLS=COLS_F.map(c=>c*W);
 function layoutPhrase(ph,size){
+  COLS = yt() ? [.2,.35,.5,.65].map(c=>c*W) : COLS_F.map(c=>c*W);
   const f=HOOK_FONTS.helv; ctx.save(); ctx.font=fontStr(f,size,400); const hs=.92;
   const colGap=COLS[1]-COLS[0]; const cells=[]; let row=0, col=0;
   for (const w of ph.words){
@@ -774,9 +792,9 @@ function layoutPhrase(ph,size){
 }
 function drawLyrics(t){
   const ph=phrases.find(p=>t>=p.t0 && t<p.t1); if (!ph) return;
-  const size=S.ly.size; const L=layoutPhrase(ph,size);
+  const size=S.ly.size*K(); const L=layoutPhrase(ph,size);
   const rowH = L.rows>=4 ? size*1.22 : size*1.39;
-  const cy = S.ly.bg==="band" ? BAND.y+BAND.h/2 : H/2;
+  const cy = (S.ly.bg==="band" && !yt()) ? BAND.y+BAND.h/2 : H/2;
   const top = cy-(L.rows-1)*rowH/2 + size*.34;
   const white=S.ly.bg==="white"; const isLast=ph===phrases[phrases.length-1];
   let fadeOut=1; if (isLast){ const end=Math.min(ph.t1,dur()); if (isFinite(end)) fadeOut=clamp((end-t)/0.6,0,1); }
@@ -806,14 +824,14 @@ function render(){
   ctx.setTransform(SC,0,0,SC,0,0); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
   const z=zoomAt(t);
   ctx.save(); ctx.filter=lookFilter[S.look]||"none";
-  ctx.translate(540,760); ctx.scale(z,z); ctx.translate(-540,-760);
+  ctx.translate(CX(),Y(760)); ctx.scale(z,z); ctx.translate(-CX(),-Y(760));
   if (hasVideo && vid.videoWidth) { const s=Math.max(W/vid.videoWidth,H/vid.videoHeight); const dw=vid.videoWidth*s, dh=vid.videoHeight*s; ctx.drawImage(vid,(W-dw)/2,(H-dh)/2,dw,dh); }
   else drawDemoBg(t);
   ctx.restore();
   ctx.save(); ctx.filter=lookFilter[S.look]||"none"; drawPics(t,"full"); ctx.restore();
   drawLook(t);
   if (S.topFade){ const g=ctx.createLinearGradient(0,0,0,740); g.addColorStop(0,"#000"); g.addColorStop(320/740,"#000"); g.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=g; ctx.fillRect(0,0,W,740); }
-  if (S.t.glow){ ctx.save(); ctx.globalCompositeOperation="screen"; const g=ctx.createRadialGradient(540,520,20,540,520,460); const a=.32+.05*Math.sin(t*2); g.addColorStop(0,`rgba(255,240,205,${a})`); g.addColorStop(1,"rgba(255,240,205,0)"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.restore(); }
+  if (S.t.glow){ ctx.save(); ctx.globalCompositeOperation="screen"; const g=ctx.createRadialGradient(CX(),Y(520),20,CX(),Y(520),460*K()); const a=.32+.05*Math.sin(t*2); g.addColorStop(0,`rgba(255,240,205,${a})`); g.addColorStop(1,"rgba(255,240,205,0)"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.restore(); }
   drawPics(t,"cards");
   drawHook(t); drawSubtitle(t);
   drawGrain(t);
@@ -878,7 +896,9 @@ function buildUI(){
   optButtons($("subPos"),Object.entries(SUB_POS).map(([k,v])=>[k,[v[0],v[1]]]),S.sub.pos,k=>S.sub.pos=k);
   bindRange("subSize",()=>S.sub.size,v=>S.sub.size=v); bindText("subWords",()=>S.sub.words,v=>S.sub.words=clamp(+v||3,1,6));
   const st=$("subText"); st.value=S[textKey()]; st.oninput=()=>{ S[textKey()]=st.value; refreshSubs(); save(); };
+  optButtons($("fmtOpts"),Object.entries(FORMATS),S.fmt,k=>{ S.fmt=k; applyFormat(); });
   optButtons($("modeOpts"),Object.entries(MODES),S.mode,k=>{ S.mode=k; applyMode(); });
+  applyFormat();
   optButtons($("lyBgOpts"),Object.entries(LY_BG),S.ly.bg,k=>S.ly.bg=k);
   bindRange("lySize",()=>S.ly.size,v=>S.ly.size=v); bindText("lyPhrase",()=>S.ly.phrase,v=>S.ly.phrase=clamp(+v||5,2,12));
   bindCheck("lyGlow",()=>S.ly.glow,v=>S.ly.glow=v);
@@ -896,6 +916,17 @@ function buildUI(){
   renderPicList();
 }
 
+function applyFormat(){
+  const wide=yt();
+  W = wide?1920:1080; H = wide?1080:1920;
+  cv.width = wide?1280:720; cv.height = wide?720:1280; SC = cv.width/W;
+  $("phone").classList.toggle("wide",wide); document.querySelector(".wrap").classList.toggle("wide",wide);
+  $("expNote").textContent = `Plays the ${wide?"video":"reel"} once from the start and records it at ${cv.width}×${cv.height} with all sound. Keep this tab open until it finishes.`;
+  $("thumbBtn").textContent = wide ? "Save YouTube thumbnail (1280×720)" : "Save cover image";
+  $("tSafe").parentElement.lastChild.textContent = wide ? " title-safe guide" : " Instagram safe zone";
+  $("dropHint").textContent = wide ? "Sample clip. Drop your YouTube video here or use “Your clip”." : "Sample clip. Drop your video here or use “Your clip”.";
+  save();
+}
 function applyMode(){
   const ly=S.mode==="lyric";
   ["hookCard","subCard","extrasCard"].forEach(id=>$(id).hidden=ly); $("lyricCard").hidden=!ly;
@@ -1071,8 +1102,8 @@ $("picIn").onchange=e=>{
 /* drag cards on the preview */
 let drag=null;
 function toCanvas(e){ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H}; }
-cv.addEventListener("pointerdown",e=>{ const q=toCanvas(e); for (let i=hitRects.length-1;i>=0;i--){ const h=hitRects[i]; if (Math.abs(q.x-h.x)<h.w/2 && Math.abs(q.y-h.y)<h.h/2){ drag={p:h.p,dx:q.x-h.p.x,dy:q.y-h.p.y}; selectPic(h.p); cv.setPointerCapture(e.pointerId); return; } } });
-cv.addEventListener("pointermove",e=>{ if(!drag) return; const q=toCanvas(e); drag.p.x=q.x-drag.dx; drag.p.y=q.y-drag.dy; });
+cv.addEventListener("pointerdown",e=>{ const q=toCanvas(e); for (let i=hitRects.length-1;i>=0;i--){ const h=hitRects[i]; if (Math.abs(q.x-h.x)<h.w/2 && Math.abs(q.y-h.y)<h.h/2){ drag={p:h.p,dx:q.x-XS(h.p.x),dy:q.y-Y(h.p.y)}; selectPic(h.p); cv.setPointerCapture(e.pointerId); return; } } });
+cv.addEventListener("pointermove",e=>{ if(!drag) return; const q=toCanvas(e); drag.p.x=(q.x-drag.dx)*1080/W; drag.p.y=(q.y-drag.dy)*1920/H; });
 cv.addEventListener("pointerup",()=>{ drag=null; });
 
 /* ---------- clip + music input ---------- */
@@ -1159,7 +1190,7 @@ async function onRecStop(){
   const type=(recMime||"video/webm").split(";")[0]; const ext=type.includes("mp4")?"mp4":"webm";
   const blob=new Blob(chunksRec,{type}); const url=URL.createObjectURL(blob);
   const v=document.createElement("video"); v.src=url; v.controls=true; v.playsInline=true; $("expOut").appendChild(v);
-  const name="talkaditalk-reel-"+new Date().toISOString().slice(0,10)+"."+ext;
+  const name="talkaditalk-"+(yt()?"youtube":"reel")+"-"+new Date().toISOString().slice(0,10)+"."+ext;
   $("expStatus").textContent=`Done · ${(blob.size/1048576).toFixed(1)} MB ${ext.toUpperCase()}. Posting it? Tag @talkaditalk so I can see it.`;
   const btn=document.createElement("button"); btn.className="btn primary"; btn.textContent="Save "+name; btn.style.marginTop="8px";
   btn.onclick=async()=>{
@@ -1170,6 +1201,18 @@ async function onRecStop(){
   $("expOut").appendChild(btn);
   if (ext==="webm") { const n=document.createElement("p"); n.className="note"; n.textContent="Your browser records WebM. Instagram accepts it from a computer; for the phone app, convert to MP4 (any free converter, or open it in CapCut)."; $("expOut").appendChild(n); }
 }
+
+/* ---------- thumbnail / cover image ---------- */
+async function saveFile(name,blob,statusEl){
+  const dl=window.claude?.use ? await window.claude.use("downloads").catch(()=>null) : null;
+  if (dl){ try{ await dl.save({filename:name,data:blob}); statusEl.textContent="Saved "+name+"."; }catch(err){ statusEl.textContent = err && err.code==="declined" ? "Save cancelled." : "Couldn't save here ("+(err&&err.code||"error")+")."; } return; }
+  const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); statusEl.textContent="Saved "+name+".";
+}
+$("thumbBtn").onclick=()=>{
+  const keep=S.t.safe, keepSel=selPic; S.t.safe=false; selPic=null; render();
+  cv.toBlob(b=>{ S.t.safe=keep; selPic=keepSel; if(!b){ $("expStatus").textContent="Couldn't make the image."; return; }
+    saveFile(`talkaditalk-${yt()?"thumbnail":"cover"}-${new Date().toISOString().slice(0,10)}.png`, b, $("expStatus")); },"image/png");
+};
 
 /* ---------- Claude hook suggestions (only inside claude.ai) ---------- */
 (async()=>{

@@ -22,7 +22,15 @@ Download this repo and open `index.html` in Chrome, Edge or Safari. That's it.
 
 To share it with people, turn on GitHub Pages for this repo (Settings → Pages → Deploy from branch → `main`, folder `/`). The editor then lives at `https://<your-username>.github.io/claudevideoeditor/`, and your Pinterest board loads in it automatically.
 
-## Two kinds of reel
+## Reels and YouTube videos
+
+Pick the **format** at the top: **Reel / Short** (9:16) or **YouTube** (16:9). Everything works in both: hooks, subtitles, looks, pictures, sounds, music, the lyric grid and export. YouTube exports at 1280×720, and **Save YouTube thumbnail** saves the current frame as a 1280×720 PNG, the size YouTube asks for. Use your own video file; the editor doesn't download from YouTube links.
+
+## Works without Claude
+
+The editor is one HTML file that runs entirely in your browser. On GitHub Pages or a downloaded copy it needs no account, no server and no AI. Two extras only switch on inside claude.ai: hook suggestions written by Claude, and the saved picture library for your phone. Everywhere else they stay hidden and everything else works the same.
+
+## Two styles
 
 ### Talking head (house style)
 For selfie clips where you talk to camera.
@@ -78,7 +86,7 @@ Your logos are built into the editor under **Pictures → My logos**: the talk a
 
 ## Export
 
-**Export reel** plays the reel once from the start and records it at 720×1280 with all the sound. Chrome and Safari save MP4. Browsers that only record WebM need a quick convert before posting from the Instagram app.
+**Export reel** plays it once from the start and records it with all the sound: 720×1280 for reels, 1280×720 for YouTube. Chrome and Safari save MP4. Browsers that only record WebM need a quick convert before posting from the Instagram app.
 
 Your settings are saved in the browser. Videos, pictures and your own sounds aren't stored, so add them again after a reload.
 
