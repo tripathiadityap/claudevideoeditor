@@ -24,6 +24,8 @@ It's live at **[tripathiadityap.github.io/claudevideoeditor](https://tripathiadi
 
 ## Made for recording on your phone
 
+The editor opens in **Simple** mode: the three steps, format and style, colour look, auto edit (with your script), pictures, music and export. Switch to **Full editor** at the top for the timeline, trim & cut, hook and subtitle settings, sound effects, Pinterest, extras, LUT files and every slider.
+
 1. Record on your phone.
 2. Open the editor and tap **1 · Choose video**.
 3. Tap **2 · Auto edit**: pauses cut, captions timed to your voice, key words animated, pictures placed.

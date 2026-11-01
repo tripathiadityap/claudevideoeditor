@@ -133,6 +133,8 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
 .lylook > div{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px}
 .lylook .row > .note{width:42px}
 .quick{gap:10px}
+body.simple .sx{display:none!important}
+#simpleOpts .opt{padding:6px 12px}
 .qsteps{display:flex;gap:8px;flex-wrap:wrap}
 .qsteps .btn{flex:1 1 150px;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;font-weight:600}
 .qtools{display:flex;gap:6px;flex-wrap:wrap}
@@ -141,7 +143,7 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
 .card.folded > h2::after,.card.folded > .row:first-child h2::after{transform:rotate(-90deg)}
 .card.folded > :not(:first-child){display:none!important}
 .card.folded{padding-block:12px}
-#miniPrev{position:fixed;z-index:45;top:max(10px,env(safe-area-inset-top,0px));right:max(10px,env(safe-area-inset-right,0px));width:96px;height:auto;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.6),0 0 0 1px var(--line);background:#000;cursor:pointer}
+#miniPrev{position:fixed;z-index:45;bottom:calc(76px + env(safe-area-inset-bottom,0px));right:max(10px,env(safe-area-inset-right,0px));width:84px;height:auto;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.6),0 0 0 1px var(--line);background:#000;cursor:pointer}
 .evlist{display:flex;flex-direction:column;gap:6px}
 .ev{display:grid;grid-template-columns:76px 1fr auto auto;gap:6px;align-items:center}
 .ev input,.ev select{padding:5px 7px}
@@ -242,7 +244,7 @@ footer.brand a:hover{color:var(--lemon)}
       <span class="time" id="time">0:00.0 / 0:14.0</span>
     </div>
     <div class="timeline mini" id="tlMini" aria-hidden="true"></div>
-    <div class="toggles">
+    <div class="toggles sx">
       <label><input type="checkbox" id="tSfx" checked> sound effects</label>
       <label><input type="checkbox" id="tMusic" checked> music</label>
       <label><input type="checkbox" id="tZoom" checked> zoom jumps</label>
@@ -261,13 +263,14 @@ footer.brand a:hover{color:var(--lemon)}
         <button class="btn" id="qExport">3 · Export</button>
       </div>
       <div class="qtools">
+        <div class="opts" id="simpleOpts" style="margin-right:auto"></div>
         <button class="btn small" id="undoBtn" disabled aria-label="Undo">↶ Undo</button>
         <button class="btn small" id="redoBtn" disabled aria-label="Redo">↷ Redo</button>
-        <button class="btn small" id="foldAll">Fold all</button>
-        <button class="btn small" id="unfoldAll">Open all</button>
+        <button class="btn small sx" id="foldAll">Fold all</button>
+        <button class="btn small sx" id="unfoldAll">Open all</button>
       </div>
-      <p class="note" id="qNote">Record on your phone, choose the clip, press Auto edit, then Export. Tap any card title to fold it away.</p>
-      <p class="note keys">Space play · ← → move 0.5 s (Shift 0.1 s) · I / O start / end · X cut · ⌘/Ctrl Z undo</p>
+      <p class="note" id="qNote">Record on your phone, choose the clip, press Auto edit, then Export. Switch to Full editor for the timeline, trims, sound effects and every setting.</p>
+      <p class="note keys sx">Space play · ← → move 0.5 s (Shift 0.1 s) · I / O start / end · X cut · ⌘/Ctrl Z undo</p>
     </section>
 
     <section class="card wide">
@@ -281,7 +284,7 @@ footer.brand a:hover{color:var(--lemon)}
       </div>
     </section>
 
-    <section class="card wide" id="tlCard">
+    <section class="card wide sx" id="tlCard">
       <div class="row" style="justify-content:space-between">
         <h2>timeline</h2>
         <div class="row">
@@ -435,7 +438,7 @@ footer.brand a:hover{color:var(--lemon)}
       </div>
       <p class="lbl">Colour grade (LUT)</p>
       <div class="opts" id="lookOpts"></div>
-      <div class="row">
+      <div class="row sx">
         <label class="btn small" for="cubeIn">Load .cube LUT</label>
         <input type="file" id="cubeIn" accept=".cube,text/plain" hidden>
         <span class="note" id="cubeNote"></span>
@@ -444,7 +447,7 @@ footer.brand a:hover{color:var(--lemon)}
         <div class="field grow"><span>Grade strength</span><input type="range" id="lutAmt" min="0" max="1" step="0.01"></div>
         <div class="field grow"><span>Film grain</span><input type="range" id="grain" min="0" max="1" step="0.01"></div>
       </div>
-      <div class="row">
+      <div class="row sx">
         <label class="toggles"><input type="checkbox" id="vignette"> vignette</label>
         <label class="toggles"><input type="checkbox" id="topFade"> black top fade</label>
       </div>
@@ -455,7 +458,7 @@ footer.brand a:hover{color:var(--lemon)}
       <h2>auto edit</h2>
       <p class="note">Paste your script (optional) and press Auto edit. It listens to your clip, cuts the dead air, times captions to your voice using your exact words, picks the key word in each line (yellow, zoom-in, word pop), writes the hook, drops your pictures on the words they match, and adds a counting graph when you say a number.</p>
       <div class="field"><span>Your script (what you say, in order)</span><textarea id="aeScript" rows="4" placeholder="Paste the script you read in the clip. Leave empty to use what the speech model hears."></textarea></div>
-      <div class="row">
+      <div class="row sx">
         <label class="toggles"><input type="checkbox" id="aeCut"> cut silences</label>
         <label class="toggles"><input type="checkbox" id="aeCaps"> captions</label>
         <label class="toggles"><input type="checkbox" id="aeHook"> hook from the first line</label>
@@ -463,7 +466,7 @@ footer.brand a:hover{color:var(--lemon)}
         <label class="toggles"><input type="checkbox" id="aeNums"> number graphs</label>
         <label class="toggles"><input type="checkbox" id="aeWhisper"> listen with the speech model</label>
       </div>
-      <div class="row">
+      <div class="row sx">
         <div class="field grow"><span>Silence strictness</span><input type="range" id="aeDb" min="14" max="40" step="1"></div>
         <div class="field grow"><span>Shortest pause to cut (s)</span><input type="range" id="aePause" min="0.25" max="1.2" step="0.05"></div>
       </div>
@@ -477,7 +480,7 @@ footer.brand a:hover{color:var(--lemon)}
       <div class="evlist" id="cutawayList"></div>
     </section>
 
-    <section class="card" id="trimCard">
+    <section class="card sx" id="trimCard">
       <h2>trim &amp; cut</h2>
       <p class="note">Move the playhead, then set where the video starts and ends. Cut out bad takes from the middle. Preview and export both skip them.</p>
       <div class="timeline" id="tl" aria-hidden="true"></div>
@@ -495,7 +498,7 @@ footer.brand a:hover{color:var(--lemon)}
       <p class="note" id="trimInfo"></p>
     </section>
 
-    <section class="card" id="hookCard">
+    <section class="card sx" id="hookCard">
       <h2>Hook</h2>
       <div class="field"><span>Hook text (new line = second line)</span><textarea id="hookText" rows="2" style="min-height:58px"></textarea></div>
       <div class="field"><span>Small line under it (optional)</span><input type="text" id="hookSub"></div>
@@ -514,7 +517,7 @@ footer.brand a:hover{color:var(--lemon)}
       </div>
     </section>
 
-    <section class="card" id="subCard">
+    <section class="card sx" id="subCard">
       <h2>Subtitles</h2>
       <p class="lbl">Font</p>
       <div class="opts" id="subFonts"></div>
@@ -530,7 +533,7 @@ footer.brand a:hover{color:var(--lemon)}
       </div>
     </section>
 
-    <section class="card" id="textCard">
+    <section class="card sx" id="textCard">
       <h2 id="textTitle">What you say</h2>
       <p class="note" id="textNote">One caption per line: start time, then the words. Wrap a word in *stars* to make it pop.</p>
       <textarea id="subText" rows="8" spellcheck="false"></textarea>
@@ -547,7 +550,7 @@ footer.brand a:hover{color:var(--lemon)}
       <p class="note" id="textHelp">“Time it automatically” takes plain text (no times), splits it into captions and spreads them across the clip.</p>
     </section>
 
-    <section class="card" id="sfxCard">
+    <section class="card sx" id="sfxCard">
       <h2>Sound effects</h2>
       <p class="lbl">Sound when a picture appears</p>
       <div class="opts" id="sfxOpts"></div>
@@ -562,7 +565,7 @@ footer.brand a:hover{color:var(--lemon)}
       </div>
     </section>
 
-    <section class="card" id="evCard">
+    <section class="card sx" id="evCard">
       <h2>Extra sounds</h2>
       <p class="note">Drop any sound anywhere on the reel. Move the playhead, pick a sound, add it. Stack as many as you like.</p>
       <div class="row">
@@ -589,7 +592,7 @@ footer.brand a:hover{color:var(--lemon)}
       <label class="toggles"><input type="checkbox" id="musDuck"> ducks under the voice</label>
     </section>
 
-    <section class="card wide" id="pinCard">
+    <section class="card wide sx" id="pinCard">
       <h2>From my Pinterest</h2>
       <p class="note" id="pinNote">Tap a pin to drop it into the reel at the playhead.</p>
       <div id="libBox" hidden>
@@ -640,7 +643,7 @@ footer.brand a:hover{color:var(--lemon)}
       </div>
     </section>
 
-    <section class="card" id="extrasCard">
+    <section class="card sx" id="extrasCard">
       <h2>Extras</h2>
       <label class="toggles"><input type="checkbox" id="xFollow"> follow nudges</label>
       <div class="field"><span>Follow text</span><input type="text" id="xFollowText"></div>
@@ -761,7 +764,7 @@ const DEFAULTS = {
     {layout:"cta", bg:"black", kicker:"", title:"save this for\nyour next edit", body:"follow for more privileged yapping"}
   ]},
   lyricText:"0:00.3 nobody\n0:00.7 talks\n0:01.1 about\n0:01.5 the\n0:01.9 quiet|part\n0:03.0 /\n0:03.1 the\n0:03.4 cuts\n0:03.8 you\n0:04.2 never\n0:04.6 post\n0:05.8 /\n0:05.9 every\n0:06.3 frame\n0:06.8 you\n0:07.1 throw\n0:07.5 away\n0:08.7 /\n0:08.8 makes\n0:09.2 the\n0:09.5 one\n0:09.9 you\n0:10.3 keep\n0:13.8 /",
-  look:"film", lutAmt:1, vignette:true, voice:{vol:1, clean:true}, expQ:(matchMedia("(max-width:760px)").matches?"720":"1080"), grain:.5, topFade:false,
+  simple:true, look:"film", lutAmt:1, vignette:true, voice:{vol:1, clean:true}, expQ:(matchMedia("(max-width:760px)").matches?"720":"1080"), grain:.5, topFade:false,
   hook:{text:"nobody's saying it,\nso I will", sub:"[about editing]", font:"helv", color:"#FFFFFF", size:80, y:900, dur:3.5},
   sub:{font:"helv", color:"#F4F83A", emph:"#FFFFFF", pos:"low", size:66, words:3},
   subText:"0:00.4 nobody's saying it\n0:01.6 so I will\n0:03.0 editing is the\n0:04.0 *real* skill\n0:05.2 not the camera\n0:06.4 not the gear\n0:07.6 it's the cuts\n0:08.8 you *keep*\n0:10.0 and the ones\n0:11.0 you *kill*\n0:12.2 follow for more\n0:13.6 -",
@@ -1811,6 +1814,7 @@ function openCard(id){ const c=$(id); if (c){ c.classList.remove("folded"); save
 /* ---------- quick bar ---------- */
 $("qAuto").onclick=()=>{ openCard("autoCard"); if (vidFile) autoEdit(false); else $("aeStatus").textContent="Choose your video first (step 1), then press Auto edit."; };
 $("qExport").onclick=()=>{ if (isCar()){ openCard("carCard"); $("carZip").click(); return; } openCard("exportCard"); if (!exporting) $("expBtn").click(); };
+function applySimple(){ document.body.classList.toggle("simple",!!S.simple); }
 function updQuick(){ const car=isCar(), an=isAnim(); $("qChoose").hidden=car||an; $("qAuto").hidden=car||an; $("qExport").textContent=car?"Save slides":(an?"Export animation":"3 · Export"); }
 
 /* ---------- floating mini preview (phones, when the main preview scrolls away) ---------- */
@@ -2512,7 +2516,8 @@ $("thumbBtn").onclick=()=>{
 })();
 
 /* ---------- boot ---------- */
-initGL(); pics=samplePics(); refreshSubs(); initCarUI(); initAnimUI(); initAutoUI(); renderTLLabels(); buildUI(); initFolds(); recordHistory(); renderTimeline(); loadPins(); initLibrary();
+initGL(); pics=samplePics(); refreshSubs(); initCarUI(); initAnimUI(); initAutoUI(); renderTLLabels(); buildUI(); initFolds(); recordHistory();
+optButtons($("simpleOpts"),[["simple",["Simple","just the essentials"]],["full",["Full editor","every tool"]]],S.simple?"simple":"full",k=>{ S.simple=k==="simple"; applySimple(); },null,false); applySimple(); renderTimeline(); loadPins(); initLibrary();
 Object.values(HOOK_FONTS).concat(Object.values(SUB_FONTS)).forEach(f=>{ try{ document.fonts.load(fontStr(f,40)); }catch(e){} });
 requestAnimationFrame(loop);
 })();
