@@ -1,8 +1,12 @@
+<p align="center"><a href="https://www.instagram.com/talkaditalk/"><img src="assets/talkaditalk-mark.png" width="200" alt="talk adi talk"></a></p>
+
 # talkaditalk Reel Studio
+
+**[Open the editor](https://tripathiadityap.github.io/claudevideoeditor/)** · [@talkaditalk](https://www.instagram.com/talkaditalk/) · [@foundayofficial](https://www.instagram.com/foundayofficial/) · [Founday](https://founday-sepia.vercel.app)
 
 **Edit Instagram reels in your browser.** Drop in a raw clip, choose the hook, subtitles, look, sound effects, music and pictures, then export a finished 9:16 reel. You don't install anything, make an account or upload your footage anywhere.
 
-Built by [@talkaditalk](https://www.instagram.com/talkaditalk/) with Claude, from the same house style I use for my own reels.
+Built by Adi ([@talkaditalk](https://www.instagram.com/talkaditalk/)) with Claude, from the same house style I use for my own reels. Made something with it? Tag [@talkaditalk](https://www.instagram.com/talkaditalk/) when you post.
 
 ![Reel Studio editor](docs/editor.png)
 
@@ -68,6 +72,10 @@ The editor shows pins from [my board](https://in.pinterest.com/tripathiadityap/t
 - Pins are linked, not copied. To hide one from the synced list, put its id in `pinterest-exclude.txt`.
 - To use your own board, change `BOARD` in `index.html` and `PINTEREST_BOARD` in the workflow.
 
+## Brand kit
+
+Your logos are built into the editor under **Pictures → My logos**: the talk adi talk logo, the dotted adi mark, Founday, ThatUnhingedGuy and The Practitioner. Tap one to drop it into the reel. In **Extras** there's also an optional handle watermark (`@talkaditalk` by default). The files live in `assets/`.
+
 ## Export
 
 **Export reel** plays the reel once from the start and records it at 720×1280 with all the sound. Chrome and Safari save MP4. Browsers that only record WebM need a quick convert before posting from the Instagram app.
@@ -84,3 +92,21 @@ Your settings are saved in the browser. Videos, pictures and your own sounds are
 | `scripts/sync-pinterest.mjs` | The sync script (Node 18+, no dependencies) |
 | `.github/workflows/sync-pinterest.yml` | Runs the sync daily |
 | `docs/` | Screenshots for this page |
+| `assets/` | Logos: talk adi talk, adi mark, Founday, ThatUnhingedGuy, The Practitioner |
+
+## Follow
+
+<p>
+  <a href="https://founday-sepia.vercel.app"><img src="assets/founday-wordmark-white.png" height="36" alt="Founday"></a>
+  &nbsp;&nbsp;
+  <a href="https://open.spotify.com/show/1DZXqmsDyH2FdJOeBdCoT6"><img src="assets/thatunhingedguy-logo.png" height="28" alt="ThatUnhingedGuy"></a>
+</p>
+
+- Instagram: [@talkaditalk](https://www.instagram.com/talkaditalk/) and [@foundayofficial](https://www.instagram.com/foundayofficial/)
+- ThatUnhingedGuy: [Spotify](https://open.spotify.com/show/1DZXqmsDyH2FdJOeBdCoT6) and [YouTube](https://www.youtube.com/playlist?list=PLBBt2c2haxM8)
+- Founday on [YouTube](https://www.youtube.com/@foundayoffical)
+- The Practitioner on [Substack](https://practitionerhq.substack.com)
+- X: [@tripathiadityap](https://x.com/tripathiadityap) · LinkedIn: [Aditya Prakash Tripathi](https://www.linkedin.com/in/tripathiadityaprakash/)
+- Founday: [site](https://founday-sepia.vercel.app) and [all links](https://founday-sepia.vercel.app/links)
+
+Founday: Raw Ambition. Unfiltered Mindset. Creative Agency.
