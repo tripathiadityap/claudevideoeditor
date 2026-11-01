@@ -62,10 +62,11 @@ For song reels and voice-overs with no talking head.
 
 The editor shows pins from [my board](https://in.pinterest.com/tripathiadityap/talditalk-image-repo/). Tap one to drop it into the reel.
 
-- A GitHub Action (`.github/workflows/sync-pinterest.yml`) reads the board's public feed every night and updates `pinterest.json`. Run it any time from the **Actions** tab → *Sync Pinterest* → *Run workflow*.
-- Pins are linked, not copied: the pictures load from Pinterest when you use them.
-- To hide a pin, put its id or number in `pinterest-exclude.txt`.
-- To use your own board, set `PINTEREST_BOARD` (e.g. `yourname/your-board`) in the workflow and change the board link in `index.html`.
+- **On GitHub Pages or a local copy**, the board loads live through Pinterest's public board widget feed. That's the newest pins, with nothing to set up.
+- **Older pins:** a GitHub Action (`.github/workflows/sync-pinterest.yml`) can also save the board into `pinterest.json` every night, and those show alongside the live pins. Run it any time from **Actions** → *Sync Pinterest* → *Run workflow*.
+- **On the claude.ai version (phone)**, Pinterest images can't load, so it has a saved **picture library** instead. Save pins to your phone, tap *Add to library*, and pick as many as you like. They stay saved for next time.
+- Pins are linked, not copied. To hide one from the synced list, put its id in `pinterest-exclude.txt`.
+- To use your own board, change `BOARD` in `index.html` and `PINTEREST_BOARD` in the workflow.
 
 ## Export
 

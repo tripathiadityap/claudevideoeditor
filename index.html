@@ -78,6 +78,8 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
 .pic.add{display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--muted);font-size:12px;height:126px;gap:4px}
 .pic.add b{font-size:26px;font-weight:400;line-height:1}
 .pins{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;max-height:330px;overflow-y:auto}
+.pins .del{position:relative}
+.pins .del::after{content:"✕";position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;font-size:12px;line-height:22px;text-align:center}
 .pins button{padding:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;cursor:pointer;background:var(--paper);aspect-ratio:3/4}
 .pins img{width:100%;height:100%;object-fit:cover;display:block}
 .pins .empty{grid-column:1/-1;color:var(--muted);font-size:12.5px;padding:10px;border:1px dashed var(--line);border-radius:9px;aspect-ratio:auto;cursor:default}
@@ -255,6 +257,19 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
     <section class="card wide">
       <h2>From my Pinterest</h2>
       <p class="note" id="pinNote">Tap a pin to drop it into the reel at the playhead.</p>
+      <div id="libBox" hidden>
+        <div class="row" style="justify-content:space-between">
+          <p class="lbl">My picture library (saved here, works on your phone)</p>
+          <div class="row">
+            <label class="btn small primary" for="libIn" id="libUpBtn" hidden>Add to library</label>
+            <input type="file" id="libIn" accept="image/*" multiple hidden>
+            <button class="btn small" id="libEdit" hidden>Remove pictures</button>
+          </div>
+        </div>
+        <p class="note" id="libNote"></p>
+        <div class="pins" id="libGrid"></div>
+      </div>
+      <p class="lbl" id="boardLbl">Live from the board</p>
       <div class="pins" id="pinGrid"></div>
       <div class="row">
         <input type="text" id="pinUrl" placeholder="Paste a Pinterest image link (right-click a pin, Copy image address)" style="flex:1;min-width:200px" aria-label="Image link">
@@ -833,18 +848,76 @@ function addPicFromUrl(url,title){
   img.onerror=()=>{ $("pinNote").textContent="That picture wouldn't load here. Save it to your device and use “Add pictures” instead."; };
   img.src=url;
 }
+const BOARD="tripathiadityap/talditalk-image-repo";
+const inClaude=()=>!!(window.claude && window.claude.use);
+function emptyMsg(grid,msg){ grid.innerHTML=""; const d=document.createElement("div"); d.className="empty"; d.textContent=msg; grid.appendChild(d); }
+function pinButton(grid,thumb,label,onClick){ const b=document.createElement("button"); b.type="button"; b.title=label||""; b.setAttribute("aria-label","Add picture "+(label||""));
+  const im=document.createElement("img"); im.loading="lazy"; im.alt=""; im.src=thumb; b.appendChild(im); b.onclick=()=>onClick(b); grid.appendChild(b); return b; }
+/* Pinterest's public board widget feed, loaded as JSONP (works from GitHub Pages or a local file) */
+function loadBoardLive(){
+  return new Promise(res=>{
+    const cb="__pins"+Date.now(), s=document.createElement("script");
+    const done=v=>{ clearTimeout(timer); try{ delete window[cb]; }catch(e){ window[cb]=undefined; } s.remove(); res(v); };
+    const timer=setTimeout(()=>done(null),9000);
+    window[cb]=d=>{ const pins=(d&&d.data&&d.data.pins)||[]; done(pins.map(p=>{ const im=p.images||{}; const big=im["564x"]||im["736x"]||im["474x"]||im["237x"]; const sm=im["237x"]||big; return big?{id:String(p.id),title:String(p.description||"").trim().slice(0,80),thumb:sm.url,url:big.url}:null; }).filter(Boolean)); };
+    s.onerror=()=>done(null);
+    s.src=`https://widgets.pinterest.com/v3/pidgets/boards/${BOARD}/pins/?callback=${cb}`;
+    document.head.appendChild(s);
+  });
+}
 async function loadPins(){
   const grid=$("pinGrid");
-  const empty=msg=>{ grid.innerHTML=""; const d=document.createElement("div"); d.className="empty"; d.textContent=msg; grid.appendChild(d); };
-  let list=null;
-  try { const r=await fetch("pinterest.json",{cache:"no-store"}); if (r.ok) list=await r.json(); } catch(e){}
-  if (!Array.isArray(list)) return empty("Your board loads here when the editor runs from GitHub Pages or the repo folder. Until then, paste image links below or open the board.");
-  if (!list.length) return empty("No pins synced yet. The daily “Sync Pinterest” action fills this in, or run it now from the repo's Actions tab.");
+  if (inClaude()){ $("boardLbl").hidden=true; grid.hidden=true; return; }
+  emptyMsg(grid,"Loading your board…");
+  let synced=[]; try { const r=await fetch("pinterest.json",{cache:"no-store"}); if (r.ok){ const j=await r.json(); if (Array.isArray(j)) synced=j; } } catch(e){}
+  const live=await loadBoardLive();
+  const seen=new Set(); const list=[];
+  for (const p of (live||[]).concat(synced)){ if (seen.has(p.id)) continue; seen.add(p.id); list.push(p); }
+  if (!list.length) return emptyMsg(grid,"Couldn't reach Pinterest just now. Open the board, right-click a pin, copy the image address and paste it below, or save pins and use “Add pictures”.");
   grid.innerHTML="";
-  list.forEach(pin=>{ const b=document.createElement("button"); b.type="button"; b.title=pin.title||""; b.setAttribute("aria-label","Add pin "+(pin.title||pin.n||""));
-    const im=document.createElement("img"); im.loading="lazy"; im.alt=""; im.src=pin.thumb||pin.url; b.appendChild(im); b.onclick=()=>addPicFromUrl(pin.url,pin.title); grid.appendChild(b); });
+  list.forEach(pin=>pinButton(grid,pin.thumb||pin.url,pin.title,()=>addPicFromUrl(pin.url,pin.title)));
   $("pinNote").textContent=`${list.length} pins from your board. Tap one to drop it into the reel at the playhead.`;
 }
+
+/* ---------- saved picture library (inside claude.ai: assets + db) ---------- */
+let libEditing=false, libDocs=[], libAssets=null, libDb=null;
+function shrinkImage(file,max=1440){
+  return new Promise((res,rej)=>{ const url=URL.createObjectURL(file); const im=new Image();
+    im.onload=()=>{ const s=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight)); const c=document.createElement("canvas"); c.width=Math.round(im.naturalWidth*s); c.height=Math.round(im.naturalHeight*s); c.getContext("2d").drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(url); c.toBlob(b=>b?res(b):rej(new Error("encode")),"image/jpeg",.88); };
+    im.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error("read")); }; im.src=url; });
+}
+function renderLibrary(){
+  const grid=$("libGrid");
+  if (!libDocs.length) return emptyMsg(grid, libAssets ? "Your library is empty. Save pins from Pinterest to your phone, then tap “Add to library” and pick as many as you like. They stay here for next time." : "No saved pictures yet.");
+  grid.innerHTML="";
+  libDocs.forEach(d=>{ const src="/_blob/"+d.asset; const b=pinButton(grid,src,d.name,async btn=>{
+      if (libEditing){ btn.disabled=true; try{ if (libAssets) await libAssets.delete(d.asset).catch(()=>{}); await libDb.collection("library").doc(d.id).delete(); }catch(e){ $("libNote").textContent="Couldn't remove that one. Try again."; btn.disabled=false; } return; }
+      addPicFromUrl(src,d.name); });
+    if (libEditing) b.classList.add("del"); });
+}
+async function initLibrary(){
+  if (!inClaude()) return;
+  let db=null, assets=null;
+  try { [db,assets]=await Promise.all([window.claude.use("db"),window.claude.use("assets")]); } catch(e){}
+  if (!db) return;
+  libDb=db; libAssets=assets; $("libBox").hidden=false; $("libUpBtn").hidden=!assets; $("libEdit").hidden=!assets;
+  $("pinNote").textContent="Tap a picture to drop it into the reel at the playhead.";
+  emptyMsg($("libGrid"),"Loading your library…");
+  const timer=setTimeout(()=>{ if (!libDocs.length) emptyMsg($("libGrid"),"Your library is taking a while to load. Reopen the page if it stays empty."); },10000);
+  db.collection("library").orderBy("added","desc").onSnapshot(snap=>{ clearTimeout(timer); libDocs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(d=>d.asset); renderLibrary(); },
+    ()=>{ clearTimeout(timer); emptyMsg($("libGrid"),"Couldn't load your library right now."); });
+}
+$("libEdit").onclick=()=>{ libEditing=!libEditing; $("libEdit").textContent=libEditing?"Done":"Remove pictures"; $("libNote").textContent=libEditing?"Tap a picture to remove it from the library.":""; renderLibrary(); };
+$("libIn").onchange=async e=>{
+  const files=[...e.target.files]; e.target.value=""; if (!files.length||!libAssets) return;
+  let ok=0, fail=0;
+  for (const [i,f] of files.entries()){
+    $("libNote").textContent=`Saving ${i+1} of ${files.length}…`;
+    try { const blob=await shrinkImage(f); const up=await libAssets.upload(blob,{type:"image/jpeg"}); await libDb.collection("library").add({asset:up.id,name:f.name.replace(/\.[^.]+$/,"").slice(0,60),added:Date.now()+i}); ok++; }
+    catch(err){ fail++; if (err && err.code==="quota_exceeded"){ $("libNote").textContent="Library storage is full. Remove a few pictures first."; return; } }
+  }
+  $("libNote").textContent=`Saved ${ok} picture${ok===1?"":"s"}${fail?`, ${fail} couldn't be read`:""}.`;
+};
 $("pinAdd").onclick=()=>{ const u=$("pinUrl").value.trim(); if (/^https?:\/\//.test(u)){ addPicFromUrl(u); $("pinUrl").value=""; } else $("pinNote").textContent="Paste a full image link that starts with https://"; };
 
 /* lyric items: words with phrase breaks */
@@ -1009,7 +1082,7 @@ async function onRecStop(){
 })();
 
 /* ---------- boot ---------- */
-pics=samplePics(); refreshSubs(); buildUI(); loadPins();
+pics=samplePics(); refreshSubs(); buildUI(); loadPins(); initLibrary();
 Object.values(HOOK_FONTS).concat(Object.values(SUB_FONTS)).forEach(f=>{ try{ document.fonts.load(fontStr(f,40)); }catch(e){} });
 requestAnimationFrame(loop);
 })();
