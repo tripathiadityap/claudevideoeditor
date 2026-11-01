@@ -90,6 +90,15 @@ Older browsers without WebGL2 get a simpler filter version of each grade.
 
 Set where the video starts and ends, and cut bad takes out of the middle. The red and black marks on the timeline show what's removed. Preview and export both skip those parts.
 
+## Timeline
+
+A multi-track timeline under the format picker shows everything in your video: **Scenes**, **Pictures**, **Captions**, **Sounds**, **Cuts** and **Music**.
+
+- **Drag** a block to move it, **drag its edges** to make it longer or shorter, **click** it to edit it below the timeline, and **click empty space** to jump the playhead there. Zoom in and out with the slider. **Delete** removes the selected block.
+- **Scenes** let you mix styles in one video: drop a **lyric grid section** (with its own lyrics) or any animation (**graph, steps, map route, breakdown, stick figure, what if**) between talking-head parts. The video keeps playing underneath and the audio carries on.
+- **Add at playhead** adds a scene, caption, sound, picture or cut where the playhead is.
+- **Save project / Open project** keeps your edit as a small `.json` file: settings, captions, scenes, sounds, cuts and linked pictures. Videos and uploaded files aren't stored, so add your clip again after opening.
+
 ## Auto edit
 
 Paste your script (optional) and press **Auto edit**. It:

@@ -121,6 +121,14 @@ textarea{font:13px/1.5 var(--mono);resize:vertical;min-height:90px}
 .timeline i{position:absolute;top:0;bottom:0;background:rgba(255,90,80,.55)}
 .timeline i.out{background:rgba(0,0,0,.6)}
 .timeline b{position:absolute;top:0;bottom:0;width:2px;background:var(--lemon)}
+.tlwrap{display:grid;grid-template-columns:118px 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card-2)}
+.tllabels{display:flex;flex-direction:column;border-right:1px solid var(--line)}
+.tllabels div{height:28px;display:flex;align-items:center;padding:0 10px;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--line)}
+.tllabels div:first-child{height:22px}
+.tlscroll{overflow-x:auto;overflow-y:hidden;min-width:0;touch-action:pan-x}
+.tlscroll canvas{display:block;cursor:pointer}
+.tlinsp{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;min-height:42px}
+.tlinsp .field{min-width:140px}
 .evlist{display:flex;flex-direction:column;gap:6px}
 .ev{display:grid;grid-template-columns:76px 1fr auto auto;gap:6px;align-items:center}
 .ev input,.ev select{padding:5px 7px}
@@ -237,6 +245,32 @@ footer.brand a:hover{color:var(--lemon)}
       <div class="opts" id="modeOpts"></div>
       <p class="note" id="modeNote"></p>
       </div>
+    </section>
+
+    <section class="card wide" id="tlCard">
+      <div class="row" style="justify-content:space-between">
+        <h2>timeline</h2>
+        <div class="row">
+          <label class="btn small" for="projIn">Open project</label>
+          <input type="file" id="projIn" accept=".json,application/json" hidden>
+          <button class="btn small" id="projSave">Save project</button>
+        </div>
+      </div>
+      <p class="note">Drag blocks to move them, drag their edges to resize, click one to edit it, click empty space to jump there. Mix talking head, lyric sections and animations in one video with Scenes.</p>
+      <div class="row">
+        <select id="tlAddKind" aria-label="What to add" style="width:auto">
+          <optgroup label="Scene"><option value="scene:lyric">Lyric grid section</option><option value="scene:graph">Graph animation</option><option value="scene:steps">Steps animation</option><option value="scene:route">Map route animation</option><option value="scene:breakdown">Breakdown animation</option><option value="scene:stick">Stick figure scene</option><option value="scene:whatif">What if scene</option></optgroup>
+          <optgroup label="Other"><option value="caption">Caption</option><option value="sound">Sound</option><option value="picture">Picture…</option><option value="cut">Cut (1 s)</option></optgroup>
+        </select>
+        <button class="btn small primary" id="tlAdd">Add at playhead</button>
+        <div class="field" style="width:150px"><span>Zoom</span><input type="range" id="tlZoom" min="20" max="200" step="5" value="60"></div>
+      </div>
+      <div class="tlwrap">
+        <div class="tllabels" id="tlLabels"></div>
+        <div class="tlscroll" id="tlScroll"><canvas id="tlc" height="200"></canvas></div>
+      </div>
+      <div class="tlinsp" id="tlInsp"><p class="note">Nothing selected.</p></div>
+      <p class="status" id="projStatus"></p>
     </section>
 
     <section class="card wide" id="carCard" hidden>
@@ -1089,14 +1123,14 @@ function layoutPhrase(ph,size){
   const rows=(cells.length?cells[cells.length-1].row:0)+1;
   return {cells,rows};
 }
-function drawLyrics(t){
-  const ph=phrases.find(p=>t>=p.t0 && t<p.t1); if (!ph) return;
+function drawLyrics(t,list=phrases,endAt=null){
+  const ph=list.find(p=>t>=p.t0 && t<p.t1); if (!ph) return;
   const size=S.ly.size*K(); const L=layoutPhrase(ph,size);
   const rowH = L.rows>=4 ? size*1.22 : size*1.39;
   const cy = (S.ly.bg==="band" && !yt()) ? BAND.y+BAND.h/2 : H/2;
   const top = cy-(L.rows-1)*rowH/2 + size*.34;
-  const white=S.ly.bg==="white"; const isLast=ph===phrases[phrases.length-1];
-  let fadeOut=1; if (isLast){ const end=Math.min(ph.t1,dur()); if (isFinite(end)) fadeOut=clamp((end-t)/0.6,0,1); }
+  const white=S.ly.bg==="white"; const isLast=ph===list[list.length-1];
+  let fadeOut=1; if (isLast){ const end=Math.min(ph.t1,endAt??dur()); if (isFinite(end)) fadeOut=clamp((end-t)/0.6,0,1); }
   const f=HOOK_FONTS.helv;
   for (const c of L.cells){
     if (t<c.w.t) continue;
@@ -1107,11 +1141,11 @@ function drawLyrics(t){
     ctx.fillStyle=white?"#111":"#fff"; ctx.fillText(c.w.text,0,0); ctx.restore();
   }
 }
-function renderLyric(){
+function renderLyric(list,endAt){
   const t=now(); hitRects=[];
   ctx.setTransform(SC,0,0,SC,0,0);
   drawLyricBg(t);
-  drawLyrics(t);
+  drawLyrics(t,list||phrases,endAt);
   drawMark();
   if (S.ly.bg!=="white") drawGrain(t);
   if (S.t.safe && !exporting) drawSafe();
@@ -1120,6 +1154,7 @@ function renderLyric(){
 function render(){
   if (isCar()) return renderCarousel();
   if (isAnim()) return renderAnim();
+  { const sc=cutawayAt(now()); if (sc && sc.type==="lyric") return renderLyric(sceneLyrics(sc), sc.t0+sc.dur); }
   if (S.mode==="lyric") return renderLyric();
   const t=now(); hitRects=[];
   ctx.setTransform(SC,0,0,SC,0,0); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
@@ -1156,7 +1191,7 @@ function loop(ts){
     if (S.mode==="lyric") for (const ph of phrases) for (const w of ph.words) if (crossed(w.t)) fire(S.sfx.word);
     for (const e of sfxEvents) if (crossed(e.t)) playSfx(e.kind);
   }
-  enforceEdit(); lastT=t; duckTick(); render(); movePlayheadMarks(t);
+  enforceEdit(); lastT=t; duckTick(); render(); movePlayheadMarks(t); drawTL();
   if (exporting){ $("expBar").style.width=(100*clamp((t-trimA())/Math.max(.1,trimB()-trimA()),0,1)).toFixed(1)+"%"; }
   if (!scrubbing){ $("scrub").value=t; }
   $("time").textContent=fmt(t)+" / "+fmt(dur());
@@ -1260,7 +1295,7 @@ function updateCards(){
   const car=isCar(), an=isAnim(), ly=S.mode==="lyric";
   VIDEO_ONLY.forEach(id=>$(id).hidden=car);
   if (an){ ["styleRow","trimCard","textCard","sfxCard","evCard","picsCard","clipVideo"].forEach(id=>$(id).hidden=true); }
-  $("autoCard").hidden=car||an;
+  $("autoCard").hidden=car||an; $("tlCard").hidden=car||an;
   ["hookCard","subCard","extrasCard"].forEach(id=>$(id).hidden=car||an||ly); $("lyricCard").hidden=car||an||!ly;
   $("animCard").hidden=!an; $("pinCard").hidden=an; $("tlMini").hidden=car||an;
   $("carCard").hidden=!car; $("slideNav").hidden=!car; $("slStrip").hidden=!car;
@@ -1646,12 +1681,135 @@ function enforceEdit(){
   const c=cutAt(t); if (c){ seek(Math.min(c.b, dur())); }
 }
 
+/* ---------- multi-track timeline ---------- */
+const TRACKS=[["scene","Scenes"],["pic","Pictures"],["cap","Captions"],["sfx","Sounds"],["cut","Cuts"],["music","Music"]];
+const TL_COL={scene:"#F4F83A",pic:"#6E98F5",cap:"#8f877b",sfx:"#F2B8C6",cut:"#E3262E",music:"#18A957"};
+const TLR=22, TLH=28; let tlSel=null, tlDrag=null, tlPPS=60;
+const tlc=$("tlc"), tctx=tlc.getContext("2d");
+function capLines(){ const out=[]; const re=/^\s*(?:(\d+):)?(\d+(?:\.\d+)?)\s+(.*)$/; S.subText.split("\n").forEach((l,li)=>{ const m=l.match(re); if (m && m[3].trim()!=="-") out.push({li,t:(+(m[1]||0))*60+ +m[2],text:m[3]}); }); return out; }
+function setCapLine(li,t,text){ const lines=S.subText.split("\n"); const m=lines[li].match(/^\s*(?:\d+:)?\d+(?:\.\d+)?\s+(.*)$/); lines[li]=fmt(Math.max(0,t))+" "+(text!=null?text:(m?m[1]:"")); S.subText=lines.join("\n"); if (S.mode!=="lyric") $("subText").value=S.subText; refreshSubs(); }
+function tlItems(){
+  const it=[], D=dur();
+  cutaways.forEach(c=>it.push({tr:"scene",t0:c.t0,t1:c.t0+c.dur,label:c.type==="lyric"?"Lyrics":(AN_TYPES[c.type]?.[0]||c.type),ref:c}));
+  pics.forEach(p=>it.push({tr:"pic",t0:p.t0,t1:p.t0+p.dur,label:p.title||(p.logo?"logo":"picture"),ref:p}));
+  const CL=S.mode!=="lyric"?capLines():[]; if (S.mode!=="lyric") subs.forEach((c,i)=>{ const L=CL[i]; if (L) it.push({tr:"cap",t0:c.t0,t1:c.t1,label:c.text.replace(/\*/g,""),ref:L}); });
+  sfxEvents.forEach(e=>it.push({tr:"sfx",t0:e.t,t1:e.t+0.3,label:e.kind.replace(/^u:/,""),ref:e,point:true}));
+  if (trimA()>0) it.push({tr:"cut",t0:0,t1:trimA(),label:"trimmed",ref:"trimA"});
+  if (trimB()<D) it.push({tr:"cut",t0:trimB(),t1:D,label:"trimmed",ref:"trimB"});
+  cuts.forEach(c=>it.push({tr:"cut",t0:c.a,t1:c.b,label:"cut",ref:c}));
+  if (mus.src) it.push({tr:"music",t0:0,t1:D,label:$("musName").textContent,ref:"music",fixed:true});
+  return it;
+}
+function drawTL(){
+  if ($("tlCard").hidden) return;
+  const D=dur()||1, wrapW=$("tlScroll").clientWidth||600; const w=Math.max(wrapW, Math.ceil(D*tlPPS)+40), h=TLR+TRACKS.length*TLH;
+  const dpr=Math.min(2,devicePixelRatio||1);
+  if (tlc.width!==w*dpr || tlc.height!==h*dpr){ tlc.width=w*dpr; tlc.height=h*dpr; tlc.style.width=w+"px"; tlc.style.height=h+"px"; }
+  const g=tctx; g.setTransform(dpr,0,0,dpr,0,0); const cs=getComputedStyle(document.documentElement);
+  g.fillStyle=cs.getPropertyValue("--card-2")||"#201D19"; g.fillRect(0,0,w,h);
+  g.strokeStyle="rgba(255,255,255,.07)"; g.fillStyle="rgba(243,239,230,.55)"; g.font="10px ui-monospace,Menlo,monospace";
+  const step=tlPPS>=90?1:tlPPS>=40?2:5;
+  for (let s2=0;s2<=D+0.001;s2+=step){ const x=s2*tlPPS; g.beginPath(); g.moveTo(x+.5,TLR-6); g.lineTo(x+.5,h); g.stroke(); g.fillText(fmt(s2).replace(/\.0$/,""),x+3,13); }
+  TRACKS.forEach((tr,i)=>{ g.fillStyle=i%2?"rgba(255,255,255,.02)":"rgba(0,0,0,.08)"; g.fillRect(0,TLR+i*TLH,w,TLH); });
+  for (const it of tlItems()){
+    const row=TRACKS.findIndex(t=>t[0]===it.tr); const y=TLR+row*TLH+4, x=it.t0*tlPPS, ww=Math.max(it.point?8:4,(it.t1-it.t0)*tlPPS);
+    const sel=tlSel && tlSel.ref===it.ref;
+    g.globalAlpha=it.tr==="cut"?0.55:0.9; g.fillStyle=TL_COL[it.tr]; rr(g,x,y,ww,TLH-8,5); g.fill(); g.globalAlpha=1;
+    if (sel){ g.strokeStyle="#fff"; g.lineWidth=2; rr(g,x,y,ww,TLH-8,5); g.stroke(); }
+    if (ww>24){ g.save(); g.beginPath(); g.rect(x+4,y,ww-8,TLH-8); g.clip(); g.fillStyle=it.tr==="scene"||it.tr==="sfx"?"#141310":"#fff"; g.font="600 11px "+HOOK_FONTS.helv.css; g.fillText(it.label,x+6,y+14); g.restore(); }
+  }
+  const px=now()*tlPPS; g.fillStyle="#F4F83A"; g.fillRect(px-1,0,2,h); g.beginPath(); g.moveTo(px-6,0); g.lineTo(px+6,0); g.lineTo(px,8); g.fill();
+}
+function tlHit(x,y){
+  const row=Math.floor((y-TLR)/TLH); if (row<0||row>=TRACKS.length) return null; const tr=TRACKS[row][0]; const t=x/tlPPS; const slop=6/tlPPS;
+  const items=tlItems().filter(i=>i.tr===tr).reverse();
+  for (const it of items){ if (t>=it.t0-slop && t<=it.t1+slop){ let mode="move"; if (!it.point && !it.fixed){ if (Math.abs(t-it.t1)<=slop*1.2) mode="end"; else if (Math.abs(t-it.t0)<=slop*1.2) mode="start"; } return {it,mode,t}; } }
+  return null;
+}
+function tlApply(it,mode,dt,orig){
+  const r=it.ref, D=dur();
+  if (it.tr==="scene"||it.tr==="pic"){ if (mode==="move") r.t0=clamp(orig.t0+dt,0,D-0.1); else if (mode==="end") r.dur=Math.max(0.3,orig.dur+dt); else { const nt=clamp(orig.t0+dt,0,orig.t0+orig.dur-0.3); r.dur=orig.dur-(nt-orig.t0); r.t0=nt; } r.t0=+r.t0.toFixed(2); r.dur=+r.dur.toFixed(2); }
+  else if (it.tr==="cap"){ setCapLine(r.li,+(orig.t0+dt).toFixed(2)); }
+  else if (it.tr==="sfx"){ r.t=+clamp(orig.t0+dt,0,D).toFixed(2); }
+  else if (it.tr==="cut"){ if (r==="trimA"){ S.trim.a=+clamp(orig.t1+dt,0,trimB()-0.3).toFixed(2); } else if (r==="trimB"){ S.trim.b=+clamp(orig.t0+dt,trimA()+0.3,D).toFixed(2); }
+    else if (mode==="move"){ const L=orig.t1-orig.t0; r.a=+clamp(orig.t0+dt,0,D-L).toFixed(2); r.b=+(r.a+L).toFixed(2); } else if (mode==="end") r.b=+Math.max(r.a+0.1,orig.t1+dt).toFixed(2); else r.a=+Math.min(r.b-0.1,orig.t0+dt).toFixed(2); }
+}
+tlc.addEventListener("pointerdown",e=>{
+  const r=tlc.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top; const h=tlHit(x,y);
+  if (!h){ if (y<TLR || true){ seek(x/tlPPS); } tlSel=null; renderInspector(); return; }
+  tlSel=h.it; renderInspector();
+  if (h.it.fixed) return;
+  const ref=h.it.ref; tlDrag={it:h.it,mode:h.mode,x0:e.clientX,orig:{t0:h.it.t0,t1:h.it.t1,dur:ref&&ref.dur}}; tlc.setPointerCapture(e.pointerId); e.preventDefault();
+});
+tlc.addEventListener("pointermove",e=>{
+  if (!tlDrag){ const r=tlc.getBoundingClientRect(); const h=tlHit(e.clientX-r.left,e.clientY-r.top); tlc.style.cursor=h?(h.mode==="move"?"grab":"ew-resize"):"pointer"; return; }
+  const dt=(e.clientX-tlDrag.x0)/tlPPS; tlApply(tlDrag.it,tlDrag.mode,dt,tlDrag.orig);
+});
+const tlEnd=()=>{ if (!tlDrag) return; const tr=tlDrag.it.tr; tlDrag=null; save(); if (tr==="pic") renderPicList(); if (tr==="scene") renderCutaways(); if (tr==="sfx") renderEvents(); if (tr==="cut") renderTimeline(); renderInspector(); };
+tlc.addEventListener("pointerup",tlEnd); tlc.addEventListener("pointercancel",tlEnd);
+$("tlZoom").oninput=()=>{ tlPPS=+$("tlZoom").value; };
+function tlDelete(){
+  if (!tlSel) return; const it=tlSel, r=it.ref;
+  if (it.tr==="scene") cutaways=cutaways.filter(x=>x!==r);
+  else if (it.tr==="pic"){ pics=pics.filter(x=>x!==r); if (selPic===r) selectPic(null); renderPicList(); }
+  else if (it.tr==="cap"){ const lines=S.subText.split("\n"); lines.splice(r.li,1); S.subText=lines.join("\n"); $("subText").value=S.subText; refreshSubs(); }
+  else if (it.tr==="sfx"){ sfxEvents=sfxEvents.filter(x=>x!==r); renderEvents(); }
+  else if (it.tr==="cut"){ if (r==="trimA") S.trim.a=0; else if (r==="trimB") S.trim.b=0; else cuts=cuts.filter(x=>x!==r); renderTimeline(); }
+  tlSel=null; renderCutaways(); renderInspector(); save();
+}
+function renderInspector(){
+  const box=$("tlInsp"); box.innerHTML=""; const it=tlSel;
+  const field=(label,el)=>{ const f=document.createElement("label"); f.className="field"; const sp=document.createElement("span"); sp.textContent=label; f.append(sp,el); box.appendChild(f); return el; };
+  const btn=(label,fn,cls)=>{ const b=document.createElement("button"); b.className="btn small "+(cls||""); b.textContent=label; b.onclick=fn; box.appendChild(b); return b; };
+  if (!it){ const p=document.createElement("p"); p.className="note"; p.textContent="Nothing selected. Click a block on the timeline to edit it."; box.appendChild(p); return; }
+  const r=it.ref;
+  if (it.tr==="scene"){
+    const sel=document.createElement("select"); [["lyric","Lyric grid"],...Object.entries(AN_TYPES).map(([k,v])=>[k,v[0]])].forEach(([k,n])=>{ const o=document.createElement("option"); o.value=k; o.textContent=n; sel.appendChild(o); }); sel.value=r.type; sel.onchange=()=>{ r.type=sel.value; if (r.type==="lyric" && !r.lyrics) r.lyrics=DEFAULT_SCENE_LYRICS; renderInspector(); renderCutaways(); };
+    field("Scene type",sel);
+    const d=document.createElement("input"); d.type="number"; d.step="0.1"; d.min="0.3"; d.value=r.dur; d.oninput=()=>{ r.dur=Math.max(0.3,+d.value||1); }; field("Length (s)",d);
+    if (r.type==="lyric"){ const ta=document.createElement("textarea"); ta.rows=4; ta.value=r.lyrics||""; ta.style.minWidth="260px"; ta.oninput=()=>{ r.lyrics=ta.value; }; field("Lyrics (times from the start of this scene; / clears)",ta); }
+    else { const p=document.createElement("p"); p.className="note"; p.textContent="Uses the settings from the Animation format (numbers, words, script). Switch Format to Animation to change them."; box.appendChild(p); }
+  } else if (it.tr==="pic"){ btn("Edit picture",()=>{ selectPic(r); $("picEd").scrollIntoView({behavior:"smooth",block:"center"}); }); }
+  else if (it.tr==="cap"){ const inp=document.createElement("input"); inp.type="text"; inp.value=r.text; inp.style.minWidth="240px"; inp.onchange=()=>{ setCapLine(r.li,r.t,inp.value); save(); }; field("Caption (*word* = key word)",inp); }
+  else if (it.tr==="sfx"){ const sel=document.createElement("select"); sfxChoices().forEach(([k,n])=>{ const o=document.createElement("option"); o.value=k; o.textContent=n; sel.appendChild(o); }); sel.value=r.kind; sel.onchange=()=>{ r.kind=sel.value; ensureAudio(); playSfx(r.kind); renderEvents(); }; field("Sound",sel); }
+  else if (it.tr==="music"){ const p=document.createElement("p"); p.className="note"; p.textContent="Music runs under the whole video. Change it in the Music card."; box.appendChild(p); return; }
+  btn("Go to it",()=>seek(it.t0)); btn("Delete",tlDelete,"danger");
+}
+const DEFAULT_SCENE_LYRICS="0:00.2 your\n0:00.6 words\n0:01.0 go|here\n0:02.0 /\n0:02.1 one\n0:02.5 at\n0:02.8 a time\n0:04.0 /";
+$("tlAdd").onclick=()=>{
+  const v=$("tlAddKind").value, t=+now().toFixed(2);
+  if (v.startsWith("scene:")){ const ty=v.slice(6); const c={t0:t,dur:ty==="lyric"?4:(ty==="stick"||ty==="whatif"?6:2.5),type:ty}; if (ty==="lyric") c.lyrics=DEFAULT_SCENE_LYRICS; cutaways.push(c); tlSel={tr:"scene",ref:c,t0:c.t0,t1:c.t0+c.dur}; renderCutaways(); }
+  else if (v==="caption"){ if (S.mode==="lyric"){ $("projStatus").textContent="Captions belong to the Talking head style. Add a lyric scene instead."; return; } S.subText=(S.subText.trim()+"\n"+fmt(t)+" new caption").trim(); $("subText").value=S.subText; refreshSubs(); }
+  else if (v==="sound"){ const k=$("evKind").value&&$("evKind").value!=="none"?$("evKind").value:"whoosh"; sfxEvents.push({id:evId++,t,kind:k}); renderEvents(); }
+  else if (v==="picture"){ $("picIn").click(); }
+  else if (v==="cut"){ cuts.push({a:t,b:+Math.min(dur(),t+1).toFixed(2)}); renderTimeline(); }
+  save(); renderInspector();
+};
+document.addEventListener("keydown",e=>{ if ((e.key==="Delete"||e.key==="Backspace") && tlSel && !e.target.matches("input,textarea,select")){ e.preventDefault(); tlDelete(); } });
+function renderTLLabels(){ const el=$("tlLabels"); el.innerHTML="<div></div>"+TRACKS.map(t=>`<div>${t[1]}</div>`).join(""); }
+/* project files: settings, captions, scenes, sounds, cuts and linked pictures (videos and uploads are not stored) */
+$("projSave").onclick=()=>{
+  const proj={app:"talkaditalk-reel-studio",v:1,saved:new Date().toISOString(),S,cuts,cutaways,sfxEvents:sfxEvents.filter(e=>!e.kind.startsWith("u:")),pics:pics.filter(p=>p.logo||/^(https?:|\/_blob\/)/.test(p.src)).map(({img,...rest})=>rest)};
+  saveFile(`talkaditalk-project-${new Date().toISOString().slice(0,10)}.json`,new Blob([JSON.stringify(proj)],{type:"application/json"}),$("projStatus"));
+};
+$("projIn").onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=""; if (!f) return;
+  try{ const p=JSON.parse(await f.text()); if (p.app!=="talkaditalk-reel-studio") throw new Error("That isn't a Reel Studio project.");
+    S=deepMerge(structuredClone(DEFAULTS),p.S||{}); cuts=p.cuts||[]; cutaways=p.cutaways||[]; sfxEvents=p.sfxEvents||[];
+    (p.pics||[]).forEach(pp=>{ const img=new Image(); img.crossOrigin="anonymous"; img.src=pp.src; pics.push({...pp,id:picId++,img}); });
+    refreshSubs(); buildUI(); renderTimeline(); renderCutaways(); renderEvents(); renderPicList(); save();
+    $("projStatus").textContent=`Opened ${f.name}. Add your video again under Your clip; videos aren't stored in projects.`; }
+  catch(err){ $("projStatus").textContent="Couldn't open that file. "+(err.message||""); }
+};
+
 /* ---------- auto edit: silences, speech timing, captions, key words, pictures, number graphs ---------- */
 const cutawayAt=t=>cutaways.find(c=>t>=c.t0 && t<c.t0+c.dur);
+const lyrCache={};
+function sceneLyrics(sc){ const key=sc.t0+"|"+(sc.lyrics||""); if (!lyrCache[key]) lyrCache[key]=parseLyrics(sc.lyrics||"").map(p=>({...p,t0:p.t0+sc.t0,t1:Math.min(p.t1+sc.t0,sc.t0+sc.dur),words:p.words.map(w=>({...w,t:w.t+sc.t0}))})); return lyrCache[key]; }
 function drawCutaway(cw,t){
   const keep=S.anim; S.anim={...keep, type:cw.type, dark:true, graph:cw.graph||keep.graph, steps:cw.steps||keep.steps};
   const lt=t-cw.t0; ctx.save(); ctx.globalAlpha=clamp(Math.min(lt/0.15,(cw.dur-lt)/0.15),0,1);
-  try{ if (cw.type==="steps") drawStepsAnim(lt,cw.dur); else if (cw.type==="route") drawRouteAnim(lt,cw.dur); else if (cw.type==="breakdown") drawBreakdownAnim(lt,cw.dur); else drawGraphAnim(lt,cw.dur); } finally { ctx.restore(); S.anim=keep; }
+  try{ if (cw.type==="stick") drawStickAnim(lt,cw.dur); else if (cw.type==="whatif") drawWhatIfAnim(lt,cw.dur); else if (cw.type==="steps") drawStepsAnim(lt,cw.dur); else if (cw.type==="route") drawRouteAnim(lt,cw.dur); else if (cw.type==="breakdown") drawBreakdownAnim(lt,cw.dur); else drawGraphAnim(lt,cw.dur); } finally { ctx.restore(); S.anim=keep; }
 }
 function drawPops(t){
   if (!S.t.pops || t<S.hook.dur) return;
@@ -1755,7 +1913,7 @@ function placePictures(sentences){
 }
 function renderCutaways(){
   const el=$("cutawayList"); el.innerHTML=""; cutaways.sort((a,b)=>a.t0-b.t0).forEach(c=>{ const row=document.createElement("div"); row.className="ev";
-    const lab=document.createElement("span"); lab.className="note"; lab.style.gridColumn="1 / 3"; lab.textContent=`${AN_TYPES[c.type]?.[0]||c.type} at ${fmt(c.t0)}`+(c.graph?.values?` · counts to ${fmtNum(+String(c.graph.values).split(",").pop(),c.graph)}`:"");
+    const lab=document.createElement("span"); lab.className="note"; lab.style.gridColumn="1 / 3"; lab.textContent=`${c.type==="lyric"?"Lyric section":(AN_TYPES[c.type]?.[0]||c.type)} at ${fmt(c.t0)}`+(c.graph?.values?` · counts to ${fmtNum(+String(c.graph.values).split(",").pop(),c.graph)}`:"");
     const go=document.createElement("button"); go.className="btn small"; go.textContent="▶"; go.setAttribute("aria-label","Preview"); go.onclick=()=>{ seek(Math.max(0,c.t0-0.5)); play(); };
     const del=document.createElement("button"); del.className="btn small danger"; del.textContent="✕"; del.setAttribute("aria-label","Remove animation"); del.onclick=()=>{ cutaways=cutaways.filter(x=>x!==c); renderCutaways(); };
     row.append(lab,go,del); el.appendChild(row); });
@@ -2183,7 +2341,7 @@ $("thumbBtn").onclick=()=>{
 })();
 
 /* ---------- boot ---------- */
-initGL(); pics=samplePics(); refreshSubs(); initCarUI(); initAnimUI(); initAutoUI(); buildUI(); renderTimeline(); loadPins(); initLibrary();
+initGL(); pics=samplePics(); refreshSubs(); initCarUI(); initAnimUI(); initAutoUI(); renderTLLabels(); buildUI(); renderTimeline(); loadPins(); initLibrary();
 Object.values(HOOK_FONTS).concat(Object.values(SUB_FONTS)).forEach(f=>{ try{ document.fonts.load(fontStr(f,40)); }catch(e){} });
 requestAnimationFrame(loop);
 })();
