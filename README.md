@@ -84,6 +84,7 @@ Real 3D LUTs, applied on your graphics card over the footage, pictures and cards
 - **Teal film:** blue-black shadows, teal greys, warm skin. The lyric-grid grade.
 - **2000s TV:** warm, soft and creamy, like crime dramas from that era.
 - **Low exposure:** dark and moody.
+- **VHS:** tape colour with lifted blacks, red/blue colour bleed, scanlines, a rolling tracking band and tape noise. Works as the main grade and as the lyric background grade.
 - **Teal & orange**, **Kodak warm**, **Moody green**, **Bleach bypass**, **Noir**.
 - **Your LUT:** load any 3D `.cube` file (from Resolve, Premiere, Lightroom or a LUT pack), with a strength slider.
 
