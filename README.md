@@ -72,7 +72,7 @@ Your talking-head video with the film look, hook, pictures, punch-ins and follow
 For song reels and voice-overs with no talking head.
 
 - Lowercase Helvetica words pop into a loose four-column grid, each on its beat, and stay until the screen clears.
-- Backgrounds: a 16:9 film band on black with a teal film grade, full-frame pictures, plain black, or plain white with black words.
+- Backgrounds: a 16:9 film band on black with a teal film grade, full-frame pictures, plain black, or plain white with black words. The soft glow works on both: white glow on dark, dark glow on white.
 - Add the song under Music and the reel runs as long as the song.
 - Write `con|scious` to split a word across two columns.
 

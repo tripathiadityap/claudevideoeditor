@@ -685,7 +685,7 @@ const FORMATS = {reel:["Reel / Short","9:16 vertical"], yt:["YouTube","16:9 land
 const CAR_LAYOUTS = {cover:"Cover", text:"Text", list:"List", quote:"Quote", image:"Photo + text", cta:"Follow / save"};
 const isCar=()=>S.fmt==="carousel";
 const MODES = {talk:["Talking head","house style: film look, hook, yellow subtitles"], mix:["Talking head + lyrics","your video, words pop into the grid"], lyric:["Lyric grid","text-only songs and voice-overs"]};
-const LY_BG = {band:["Film band","16:9 band on black, teal film"], full:["Full pictures","pictures fill the frame"], black:["Black","plain"], white:["White","black words, no glow"]};
+const LY_BG = {band:["Film band","16:9 band on black, teal film"], full:["Full pictures","pictures fill the frame"], black:["Black","plain"], white:["White","black words, soft glow"]};
 const DEFAULTS = {
   fmt:"reel",
   mode:"talk",
@@ -1137,7 +1137,7 @@ function drawLyrics(t,list=phrases,endAt=null,o={}){
     const a=clamp((t-c.w.t)/0.066,0,1)*fadeOut;
     ctx.save(); ctx.globalAlpha=a; ctx.font=fontStr(f,size,400); ctx.textAlign="left"; ctx.textBaseline="alphabetic";
     ctx.translate(COLS[c.col], top+c.row*rowH); ctx.scale(.92,1);
-    if (!white && S.ly.glow){ ctx.shadowColor="rgba(255,255,255,.45)"; ctx.shadowBlur=18; }
+    if (S.ly.glow){ ctx.shadowColor=white?"rgba(0,0,0,.42)":"rgba(255,255,255,.45)"; ctx.shadowBlur=18; }
     ctx.fillStyle=white?"#111":"#fff"; ctx.fillText(c.w.text,0,0); ctx.restore();
   }
 }
