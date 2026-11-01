@@ -64,6 +64,14 @@ input[type=checkbox]{accent-color:var(--lemon)}
 .opts{display:flex;flex-wrap:wrap;gap:8px}
 .opt{background:var(--card-2);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 11px;cursor:pointer;text-align:left;line-height:1.15;font-size:13px;font-family:inherit}
 .opt small{display:block;font:400 10px var(--body);color:var(--muted);margin-top:2px;font-style:normal;letter-spacing:0}
+.opt.peek,.sw.peek{outline:2px dashed var(--lemon);outline-offset:2px}
+.ctxmenu{position:fixed;z-index:100;min-width:210px;max-width:min(280px,calc(100vw - 24px));background:var(--card-2);border:1px solid #3a362f;border-radius:12px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.6);display:flex;flex-direction:column}
+.ctxmenu button{all:unset;cursor:pointer;padding:9px 12px;border-radius:8px;font-size:13.5px;color:var(--ink);display:flex;justify-content:space-between;gap:16px}
+.ctxmenu button small{color:var(--muted);font-size:11px}
+.ctxmenu button:hover,.ctxmenu button:focus-visible{background:var(--chip);color:var(--lemon)}
+.ctxmenu button.danger{color:var(--danger)}
+.ctxmenu hr{border:0;border-top:1px solid var(--line);margin:4px 6px}
+.ctxmenu .head{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:6px 12px 4px}
 .opt.on{border-color:var(--lemon);box-shadow:inset 0 0 0 1px var(--lemon)}
 .opt.on > span{color:var(--lemon)}
 .opt:hover{border-color:#4a453d}
@@ -453,6 +461,8 @@ footer.brand a:hover{color:var(--lemon)}
   </nav>
   <p class="made">Made by <a href="https://www.instagram.com/talkaditalk/" target="_blank" rel="noopener">Tripathi Aditya Prakash</a> (Adi). Post something you made here? Tag <a href="https://www.instagram.com/talkaditalk/" target="_blank" rel="noopener">@talkaditalk</a>.</p>
 </footer>
+
+<div class="ctxmenu" id="ctx" role="menu" hidden></div>
 
 <video id="vid" playsinline preload="auto" hidden></video>
 <audio id="mus" preload="auto" loop hidden></audio>
@@ -993,22 +1003,39 @@ function loop(ts){
 }
 
 /* ---------- UI builders ---------- */
-function optButtons(el,entries,current,onPick,styleFn){
+/* Hover (mouse) or press-and-hold (touch) an option to preview it on the reel; click/tap to keep it. */
+let previewing=false;
+function addPreview(b,apply,revert){
+  let timer=null, held=false;
+  const start=()=>{ previewing=true; apply(); previewing=false; b.classList.add("peek"); };
+  const stop=()=>{ if (!b.classList.contains("peek")) return; previewing=true; revert(); previewing=false; b.classList.remove("peek"); };
+  b.addEventListener("pointerenter",e=>{ if (e.pointerType==="mouse") start(); });
+  b.addEventListener("pointerleave",e=>{ if (e.pointerType==="mouse") stop(); clearTimeout(timer); });
+  b.addEventListener("pointerdown",e=>{ if (e.pointerType==="mouse") return; held=false; clearTimeout(timer); timer=setTimeout(()=>{ held=true; start(); if (navigator.vibrate) try{navigator.vibrate(8);}catch(_){} },380); });
+  const end=e=>{ if (e.pointerType==="mouse") return; clearTimeout(timer); if (held){ stop(); b._suppress=true; setTimeout(()=>b._suppress=false,450); } };
+  b.addEventListener("pointerup",end); b.addEventListener("pointercancel",end);
+  b.addEventListener("contextmenu",e=>{ if (held) e.preventDefault(); });
+  return ()=>{ b.classList.remove("peek"); };
+}
+function optButtons(el,entries,current,onPick,styleFn,hover=true){
   el.innerHTML="";
   for (const [key,[name,sub]] of entries){
     const b=document.createElement("button"); b.type="button"; b.className="opt"+(key===current?" on":""); b.dataset.k=key;
     b.innerHTML=`<span></span>${sub?`<small></small>`:""}`; b.firstChild.textContent=name; if(sub) b.lastChild.textContent=sub;
     if (styleFn) styleFn(b.firstChild,key);
-    b.onclick=()=>{ el.querySelectorAll(".opt").forEach(x=>x.classList.toggle("on",x===b)); onPick(key); save(); };
+    const commit = hover ? addPreview(b,()=>onPick(key),()=>{ const on=el.querySelector(".opt.on"); if (on) onPick(on.dataset.k); }) : ()=>{};
+    b.onclick=()=>{ if (b._suppress) return; commit(); el.querySelectorAll(".opt").forEach(x=>x.classList.toggle("on",x===b)); onPick(key); save(); };
     el.appendChild(b);
   }
 }
 function swatches(el,colors,current,onPick,withPicker){
   el.innerHTML="";
+  let kept=current;
   const mk=c=>{ const b=document.createElement("button"); b.type="button"; b.className="sw"+(c.toLowerCase()===current.toLowerCase()?" on":""); b.style.background=c; b.setAttribute("aria-label","Colour "+c);
-    b.onclick=()=>{ el.querySelectorAll(".sw").forEach(x=>x.classList.toggle("on",x===b)); onPick(c); save(); }; el.appendChild(b); };
+    const commit=addPreview(b,()=>onPick(c),()=>onPick(kept));
+    b.onclick=()=>{ if (b._suppress) return; commit(); kept=c; el.querySelectorAll(".sw").forEach(x=>x.classList.toggle("on",x===b)); onPick(c); save(); }; el.appendChild(b); };
   colors.forEach(mk);
-  if (withPicker){ const p=document.createElement("input"); p.type="color"; p.value=current; p.setAttribute("aria-label","Custom colour"); p.oninput=()=>{ el.querySelectorAll(".sw").forEach(x=>x.classList.remove("on")); onPick(p.value); save(); }; el.appendChild(p); }
+  if (withPicker){ const p=document.createElement("input"); p.type="color"; p.value=current; p.setAttribute("aria-label","Custom colour"); p.oninput=()=>{ kept=p.value; el.querySelectorAll(".sw").forEach(x=>x.classList.remove("on")); onPick(p.value); save(); }; el.appendChild(p); }
 }
 function bindRange(id,get,set){ const el=$(id); el.value=get(); el.oninput=()=>{ set(+el.value); save(); }; }
 function bindCheck(id,get,set){ const el=$(id); el.checked=get(); el.onchange=()=>{ set(el.checked); save(); if (id==="tMusic"){ if(el.checked&&playing&&mus.src){syncMusic();mus.play().catch(()=>{});} else mus.pause(); } }; }
@@ -1016,7 +1043,7 @@ function bindText(id,get,set){ const el=$(id); el.value=get(); el.oninput=()=>{ 
 
 function buildUI(){
   if (OLD_LOOK[S.look]) S.look=OLD_LOOK[S.look];
-  optButtons($("lookOpts"),Object.entries(LOOKS),S.look,k=>{ S.look=k; if (k==="custom" && !GL.luts.custom){ $("cubeNote").textContent="Load a .cube file to use your own LUT. Showing Film until then."; } });
+  optButtons($("lookOpts"),Object.entries(LOOKS),S.look,k=>{ S.look=k; if (k==="custom" && !GL.luts.custom && !previewing){ $("cubeNote").textContent="Load a .cube file to use your own LUT. Showing Film until then."; } });
   optButtons($("lyGradeOpts"),Object.entries(LOOKS).filter(([k])=>k!=="custom"||GL.ok),S.ly.grade,k=>S.ly.grade=k);
   bindRange("lutAmt",()=>S.lutAmt,v=>S.lutAmt=v); bindCheck("vignette",()=>S.vignette,v=>S.vignette=v);
   $("glNote").textContent = GL.ok ? "" : "Your browser can't run the full LUT engine, so grades use a simpler filter version and .cube files are off.";
@@ -1027,20 +1054,20 @@ function buildUI(){
   swatches($("hookColors"),HOOK_COLORS,S.hook.color,c=>S.hook.color=c,true);
   bindRange("hookSize",()=>S.hook.size,v=>S.hook.size=v); bindRange("hookY",()=>S.hook.y,v=>S.hook.y=v);
   bindText("hookDur",()=>S.hook.dur,v=>S.hook.dur=+v||3.5);
-  optButtons($("subFonts"),Object.entries(SUB_FONTS).map(([k,f])=>[k,[f.n,f.s]]),S.sub.font,k=>{ S.sub.font=k; if (k==="tvcap"){ S.sub.color="#FFFFFF"; swatches($("subColors"),SUB_COLORS,S.sub.color,c=>S.sub.color=c,true); } },(span,k)=>{ const f=SUB_FONTS[k]; span.style.fontFamily=f.css; span.style.fontWeight=f.w; });
+  optButtons($("subFonts"),Object.entries(SUB_FONTS).map(([k,f])=>[k,[f.n,f.s]]),S.sub.font,k=>{ S.sub.font=k; if (k==="tvcap" && !previewing){ S.sub.color="#FFFFFF"; swatches($("subColors"),SUB_COLORS,S.sub.color,c=>S.sub.color=c,true); } },(span,k)=>{ const f=SUB_FONTS[k]; span.style.fontFamily=f.css; span.style.fontWeight=f.w; });
   swatches($("subColors"),SUB_COLORS,S.sub.color,c=>S.sub.color=c,true);
   const ec=$("emphColor"); ec.value=S.sub.emph; ec.oninput=()=>{ S.sub.emph=ec.value; save(); };
   optButtons($("subPos"),Object.entries(SUB_POS).map(([k,v])=>[k,[v[0],v[1]]]),S.sub.pos,k=>S.sub.pos=k);
   bindRange("subSize",()=>S.sub.size,v=>S.sub.size=v); bindText("subWords",()=>S.sub.words,v=>S.sub.words=clamp(+v||3,1,6));
   const st=$("subText"); st.value=S[textKey()]; st.oninput=()=>{ S[textKey()]=st.value; refreshSubs(); save(); };
-  optButtons($("fmtOpts"),Object.entries(FORMATS),S.fmt,k=>{ S.fmt=k; applyFormat(); });
-  optButtons($("modeOpts"),Object.entries(MODES),S.mode,k=>{ S.mode=k; applyMode(); });
+  optButtons($("fmtOpts"),Object.entries(FORMATS),S.fmt,k=>{ S.fmt=k; applyFormat(); },null,false);
+  optButtons($("modeOpts"),Object.entries(MODES),S.mode,k=>{ S.mode=k; applyMode(); },null,false);
   applyFormat();
   optButtons($("lyBgOpts"),Object.entries(LY_BG),S.ly.bg,k=>S.ly.bg=k);
   bindRange("lySize",()=>S.ly.size,v=>S.ly.size=v); bindText("lyPhrase",()=>S.ly.phrase,v=>S.ly.phrase=clamp(+v||5,2,12));
   bindCheck("lyGlow",()=>S.ly.glow,v=>S.ly.glow=v);
   applyMode();
-  optButtons($("sfxOpts"),Object.entries(SFX),S.sfx.kind,k=>{ S.sfx.kind=k; ensureAudio(); playSfx(k); });
+  optButtons($("sfxOpts"),Object.entries(SFX),S.sfx.kind,k=>{ S.sfx.kind=k; ensureAudio(); playSfx(k); },null,false);
   bindRange("sfxVol",()=>S.sfx.vol,v=>S.sfx.vol=v);
   fillSfxSelects();
   [["sfxEmph","emph"],["sfxFull","full"],["sfxWord","word"]].forEach(([id,k])=>{ $(id).onchange=()=>{ S.sfx[k]=$(id).value; ensureAudio(); playSfx(S.sfx[k]); save(); }; });
@@ -1216,7 +1243,7 @@ function renderPicList(){
   pics.slice().sort((a,b)=>a.t0-b.t0).forEach(p=>{
     const d=document.createElement("button"); d.type="button"; d.className="pic"+(p===selPic?" on":""); d.setAttribute("aria-label","Picture at "+fmt(p.t0));
     const im=document.createElement("img"); im.src=p.src; im.alt=""; const tt=document.createElement("div"); tt.className="t"; tt.textContent=fmt(p.t0)+(p.mode==="full"?" · full":"");
-    d.append(im,tt); d.onclick=()=>{ selectPic(p); seek(p.t0+0.4); }; el.appendChild(d);
+    d.append(im,tt); d.onclick=()=>{ selectPic(p); seek(p.t0+0.4); }; d.oncontextmenu=e=>{ e.preventDefault(); seek(p.t0+0.4); openCtx(e.clientX,e.clientY,null,p); }; el.appendChild(d);
   });
   const add=document.createElement("label"); add.className="pic add"; add.htmlFor="picIn"; add.innerHTML="<b>+</b>Add pictures"; el.appendChild(add);
 }
@@ -1231,17 +1258,60 @@ $("pDel").onclick=()=>{ if(!selPic) return; pics=pics.filter(p=>p!==selPic); sel
 $("picIn").onchange=e=>{
   const files=[...e.target.files]; let t=now(); let i=0;
   for (const f of files){ const src=URL.createObjectURL(f); const img=new Image(); img.src=src;
-    const p={id:picId++,img,src,t0:+Math.min(t,Math.max(0,dur()-1)).toFixed(1),dur:2,mode:"card",anim:["pop","slide","drop"][i%3],sfx:"default",x:i%2?740:340,y:660,w:340,rot:i%2?4:-4};
+    const p={id:picId++,img,src,t0:+Math.min(t,Math.max(0,dur()-1)).toFixed(1),dur:2,mode:"card",anim:["pop","slide","drop"][i%3],sfx:"default",x:picDrop?picDrop.x:(i%2?740:340),y:picDrop?picDrop.y:660,w:340,rot:i%2?4:-4};
     pics.push(p); t+=2.2; i++; if (files.length===1) selPic=p; }
-  e.target.value=""; renderPicList(); if (selPic) selectPic(selPic);
+  e.target.value=""; picDrop=null; renderPicList(); if (selPic) selectPic(selPic);
 };
 
 /* drag cards on the preview */
 let drag=null;
 function toCanvas(e){ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H}; }
-cv.addEventListener("pointerdown",e=>{ const q=toCanvas(e); for (let i=hitRects.length-1;i>=0;i--){ const h=hitRects[i]; if (Math.abs(q.x-h.x)<h.w/2 && Math.abs(q.y-h.y)<h.h/2){ drag={p:h.p,dx:q.x-XS(h.p.x),dy:q.y-Y(h.p.y)}; selectPic(h.p); cv.setPointerCapture(e.pointerId); return; } } });
-cv.addEventListener("pointermove",e=>{ if(!drag) return; const q=toCanvas(e); drag.p.x=(q.x-drag.dx)*1080/W; drag.p.y=(q.y-drag.dy)*1920/H; });
-cv.addEventListener("pointerup",()=>{ drag=null; });
+const picAt=q=>{ for (let i=hitRects.length-1;i>=0;i--){ const h=hitRects[i]; if (Math.abs(q.x-h.x)<h.w/2 && Math.abs(q.y-h.y)<h.h/2) return h.p; } return null; };
+let lp=null; // long-press on the preview (touch) opens the menu
+cv.addEventListener("pointerdown",e=>{ if (e.button===2) return; const q=toCanvas(e); const p=picAt(q);
+  if (e.pointerType!=="mouse"){ clearTimeout(lp&&lp.t); lp={x:e.clientX,y:e.clientY,t:setTimeout(()=>{ drag=null; openCtx(e.clientX,e.clientY,q,picAt(q),true); lp=null; if (navigator.vibrate) try{navigator.vibrate(10);}catch(_){} },520)}; }
+  if (p){ drag={p,dx:q.x-XS(p.x),dy:q.y-Y(p.y)}; selectPic(p); cv.setPointerCapture(e.pointerId); } });
+cv.addEventListener("pointermove",e=>{ if (lp && Math.hypot(e.clientX-lp.x,e.clientY-lp.y)>10){ clearTimeout(lp.t); lp=null; } if(!drag) return; const q=toCanvas(e); drag.p.x=(q.x-drag.dx)*1080/W; drag.p.y=(q.y-drag.dy)*1920/H; });
+const endPress=()=>{ drag=null; if (lp){ clearTimeout(lp.t); lp=null; } };
+cv.addEventListener("pointerup",endPress); cv.addEventListener("pointercancel",endPress);
+cv.addEventListener("contextmenu",e=>{ e.preventDefault(); const q=toCanvas(e); openCtx(e.clientX,e.clientY,q,picAt(q)); });
+
+/* ---------- right-click / long-press menu ---------- */
+let picDrop=null, ctxOpenedAt=0;
+function closeCtx(){ $("ctx").hidden=true; }
+function openCtx(cx,cy,q,pic,touch){
+  const m=$("ctx"); m.innerHTML=""; ctxOpenedAt=touch?performance.now():0; if (touch){ cx+=14; cy+=14; }
+  const head=t=>{ const d=document.createElement("div"); d.className="head"; d.textContent=t; m.appendChild(d); };
+  const item=(label,fn,hint,cls)=>{ const b=document.createElement("button"); b.setAttribute("role","menuitem"); if(cls) b.className=cls; b.innerHTML="<span></span><small></small>"; b.firstChild.textContent=label; b.lastChild.textContent=hint||""; b.onclick=()=>{ if (performance.now()-ctxOpenedAt<450) return; closeCtx(); fn(); }; m.appendChild(b); };
+  const hr=()=>m.appendChild(document.createElement("hr"));
+  if (pic){
+    head("Picture");
+    item("Edit picture",()=>{ selectPic(pic); $("picEd").scrollIntoView({behavior:"smooth",block:"center"}); });
+    item("Show it from the playhead",()=>{ pic.t0=+now().toFixed(1); selectPic(pic); });
+    item(pic.mode==="full"?"Make it a card":"Make it full screen",()=>{ pic.mode=pic.mode==="full"?"card":"full"; selectPic(pic); });
+    item("Bring to front",()=>{ pics=pics.filter(x=>x!==pic).concat(pic); renderPicList(); });
+    item("Duplicate",()=>{ const c={...pic,id:picId++,x:pic.x+40,y:pic.y+40}; pics.push(c); selectPic(c); });
+    item("Remove picture",()=>{ pics=pics.filter(x=>x!==pic); selectPic(null); },"","danger");
+    hr();
+  }
+  head("At "+fmt(now()));
+  item(playing?"Pause":"Play",()=>playing?pause():play(),"space");
+  if (q){ item("Add a picture here",()=>{ picDrop={x:q.x*1080/W,y:q.y*1920/H}; $("picIn").click(); }); }
+  const k=$("evKind").value&&$("evKind").value!=="none"?$("evKind").value:"whoosh";
+  item("Add a sound here",()=>{ sfxEvents.push({id:evId++,t:+now().toFixed(2),kind:k}); ensureAudio(); playSfx(k); renderEvents(); }, ($("evKind").selectedOptions[0]||{}).textContent||"");
+  hr();
+  item("Start here",()=>$("trimA").click()); item("End here",()=>$("trimB").click());
+  if (cutStart===null) item("Cut from here",()=>$("cutA").click()); else item("Cut to here",()=>$("cutB").click(),"from "+fmt(cutStart));
+  hr();
+  item(yt()?"Save thumbnail":"Save cover image",()=>$("thumbBtn").click());
+  m.hidden=false;
+  const r=m.getBoundingClientRect(); const x=Math.min(cx,innerWidth-r.width-12), y=Math.min(cy,innerHeight-r.height-12);
+  m.style.left=Math.max(12,x)+"px"; m.style.top=Math.max(12,y)+"px";
+  const first=m.querySelector("button"); if (first) first.focus({preventScroll:true});
+}
+document.addEventListener("pointerdown",e=>{ if (!$("ctx").hidden && !$("ctx").contains(e.target)) closeCtx(); });
+document.addEventListener("keydown",e=>{ if (e.key==="Escape") closeCtx(); });
+addEventListener("scroll",closeCtx,{passive:true}); addEventListener("resize",closeCtx);
 
 /* ---------- clip + music input ---------- */
 function loadVideo(file){

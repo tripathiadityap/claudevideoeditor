@@ -66,6 +66,11 @@ Older browsers without WebGL2 get a simpler filter version of each grade.
 
 Set where the video starts and ends, and cut bad takes out of the middle. The red and black marks on the timeline show what's removed. Preview and export both skip those parts.
 
+## Right-click and press-and-hold
+
+- **Right-click the preview** (or **press and hold** it on your phone) for a quick menu. On a picture: edit, show it from the playhead, switch card/full screen, bring to front, duplicate, remove. Anywhere: play/pause, add a picture or sound right there, start/end/cut at the playhead, save a thumbnail.
+- **Hover to preview**: move the mouse over any grade, font, colour or position and the reel shows it live. Move away and it goes back; click to keep it. On a phone, press and hold an option to preview it, then let go.
+
 ## Captions, four ways
 
 1. Type them: one line per caption, as `0:01.6 so I will`.
